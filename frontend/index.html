@@ -349,7 +349,7 @@ body{background:var(--dark);color:#f0f0f0;font-family:-apple-system,BlinkMacSyst
   </div>
   <div class="ref-link-box">
     <div style="font-size:12px;color:#888;margin-bottom:4px;">Your referral link:</div>
-    <div class="ref-link-url" id="ref-url">t.me/StreetFinalBossBot?start=ref_0</div>
+    <div class="ref-link-url" id="ref-url">t.me/StreetFinalBossBot/StreetBoss?startapp=ref_0</div>
     <div class="ref-btns">
       <button class="ref-btn ref-btn-share" onclick="shareLink()">📤 Share Link</button>
       <button class="ref-btn ref-btn-copy" onclick="copyLink()">📋 Copy Link</button>
@@ -608,7 +608,7 @@ function buildGame(type){
       <div class="loot-bdg">+${t.loot.toFixed(2)} TON</div>
     </div>`).join("");
   // Referral link
-  document.getElementById("ref-url").textContent="t.me/StreetFinalBossBot?start=ref_"+UID;
+  document.getElementById("ref-url").textContent="t.me/StreetFinalBossBot/StreetBoss?startapp=ref_"+UID;
   document.getElementById("ref-url").onclick=function(){copyLink();};
   document.getElementById("ref-url").style.cursor="pointer";
 }
@@ -686,7 +686,7 @@ async function loadFriends(){
   if(!data||data.error) return;
   refCount=data.referrals||0;
   friendsList=data.friends||[];
-  document.getElementById("ref-url").textContent="t.me/StreetFinalBossBot?start=ref_"+UID;
+  document.getElementById("ref-url").textContent="t.me/StreetFinalBossBot/StreetBoss?startapp=ref_"+UID;
   document.getElementById("ref-url").onclick=function(){copyLink();};
   document.getElementById("ref-url").style.cursor="pointer";
   document.getElementById("friends-count").textContent=refCount;
@@ -709,21 +709,20 @@ async function loadFriends(){
 }
 
 function shareLink(){
-  const link="https://t.me/StreetFinalBossBot/StreetBoss?startapp=ref_"+UID;
-  const botLink="https://t.me/StreetFinalBossBot?start=ref_"+UID;
-  const text="Join StreetBoss - build your street empire & earn real TON!";
+  const link = "https://t.me/StreetFinalBossBot/StreetBoss?startapp=ref_"+UID;
+  const text = "Join StreetBoss! Build your street empire & earn real TON! Play now:";
   if(tg){
-    tg.openTelegramLink("https://t.me/share/url?url="+encodeURIComponent(botLink)+"&text="+encodeURIComponent(text));
+    tg.openTelegramLink("https://t.me/share/url?url="+encodeURIComponent(link)+"&text="+encodeURIComponent(text));
   }else{
-    copyText(botLink);
-    toast("Link copied!","var(--green)");
+    copyText(link);
+    toast("Link copied! Share it with friends!","var(--green)");
   }
 }
 
 function copyLink(){
-  const link="https://t.me/StreetFinalBossBot?start=ref_"+UID;
+  const link = "https://t.me/StreetFinalBossBot/StreetBoss?startapp=ref_"+UID;
   copyText(link);
-  toast("Referral link copied! Share it with friends!","var(--green)");
+  toast("Link copied! ","var(--green)");
 }
 
 function copyText(t){
@@ -889,126 +888,157 @@ async function buyStartPack(){
 
 
 // ── PAYMENT SYSTEM ──────────────────────────────────────────────
+const TONCENTER = "https://toncenter.com/api/v2";
+
 function sendTONPayment(amountTON, label, onSuccess, onCancel){
   if(!walletAddr){
-    toast("Connect TON wallet first!","var(--red)");
+    toast("Connect your TON wallet first!","var(--red)");
     navTo(document.querySelectorAll(".nav-btn")[4],"wallet");
     setTimeout(()=>connectWallet(),600);
     return;
   }
-  const nano = Math.floor(amountTON * 1000000000);
-  const tonLink = "ton://transfer/"+OWNER
-    +"?amount="+nano
-    +"&text="+encodeURIComponent("StreetBoss:"+label);
-  showPayModal(amountTON, label, tonLink, onSuccess, onCancel);
+  showPayModal(amountTON, label, onSuccess, onCancel);
 }
 
-function showPayModal(amount, label, tonLink, onSuccess, onCancel){
+function showPayModal(amount, label, onSuccess, onCancel){
   const existing = document.getElementById("pay-modal");
   if(existing) existing.remove();
 
-  let walletOpened = false;
+  const nano = Math.floor(amount * 1000000000);
+  const walletShort = walletAddr.slice(0,6)+"..."+walletAddr.slice(-4);
+  
+  // Tonkeeper web link - works in Telegram WebApp
+  const tkLink = "https://app.tonkeeper.com/transfer/"+OWNER
+    +"?amount="+nano
+    +"&text="+encodeURIComponent("SB:"+label.replace(/ /g,"-"));
 
   const modal = document.createElement("div");
   modal.id = "pay-modal";
-  modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9999;display:flex;align-items:flex-end;justify-content:center;";
-
-  const walletShort = walletAddr ? walletAddr.slice(0,8)+"..."+walletAddr.slice(-4) : "Not connected";
-
+  modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:9999;display:flex;align-items:flex-end;justify-content:center;";
   modal.innerHTML = `
-    <div style="background:#16161f;border-radius:24px 24px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;border:1px solid rgba(255,255,255,0.08);">
-      <div style="text-align:center;margin-bottom:18px;">
-        <div style="font-size:30px;margin-bottom:6px;">💎</div>
-        <div style="font-size:17px;font-weight:800;color:#f0c040;">Send Payment</div>
-        <div style="font-size:12px;color:#666;margin-top:3px;">${label}</div>
-      </div>
-      <div style="background:#0a0a14;border-radius:12px;padding:14px;margin-bottom:14px;">
-        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.04);">
-          <span style="font-size:12px;color:#555;">Amount</span>
-          <span style="font-size:15px;font-weight:800;color:#4ea8f0;">${amount.toFixed(2)} TON</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid rgba(255,255,255,0.04);">
-          <span style="font-size:12px;color:#555;">To</span>
-          <span style="font-size:11px;color:#888;font-family:monospace;">UQCvimm...N7Ykw</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;padding:5px 0;">
-          <span style="font-size:12px;color:#555;">From</span>
-          <span style="font-size:11px;color:#3dd68c;font-family:monospace;">${walletShort}</span>
-        </div>
+    <div style="background:#16161f;border-radius:22px 22px 0 0;padding:22px 18px 34px;width:100%;max-width:480px;border:1px solid rgba(255,255,255,0.08);">
+      <div style="text-align:center;margin-bottom:16px;">
+        <div style="font-size:24px;margin-bottom:4px;">💎</div>
+        <div style="font-size:16px;font-weight:800;color:#f0f0f0;">${label}</div>
+        <div style="font-size:30px;font-weight:900;color:#4ea8f0;margin-top:6px;">${amount.toFixed(2)} TON</div>
+        <div style="font-size:11px;color:#444;margin-top:4px;">from: ${walletShort} → owner wallet</div>
       </div>
 
-      <div id="pay-step1" style="">
-        <div style="background:#0d2010;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#3dd68c;line-height:1.6;">
-          Step 1: Tap the button below to open your TON wallet and send the payment.<br>
-          Step 2: After sending, come back here and confirm.
-        </div>
-        <button id="pay-open-btn" style="width:100%;padding:15px;border-radius:13px;border:none;cursor:pointer;font-size:15px;font-weight:800;background:linear-gradient(135deg,#0055cc,#0088ff);color:#fff;margin-bottom:10px;">
-          Open Wallet & Pay ${amount.toFixed(2)} TON
-        </button>
-        <button id="pay-cancel-btn" style="width:100%;padding:11px;border-radius:13px;border:none;cursor:pointer;font-size:13px;color:#444;background:transparent;">
-          Cancel
-        </button>
+      <div id="pay-status" style="background:#0a0e14;border-radius:10px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#666;text-align:center;line-height:1.7;">
+        Open Tonkeeper and send <strong style="color:#4ea8f0;">${amount.toFixed(2)} TON</strong><br>
+        then tap <strong style="color:#3dd68c;">Verify Payment</strong> below.
       </div>
 
-      <div id="pay-step2" style="display:none;">
-        <div style="background:#1a1400;border-radius:10px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#f0c040;line-height:1.6;">
-          Did you send <strong>${amount.toFixed(2)} TON</strong> from your wallet app?<br>
-          Only confirm if the transaction was completed.
-        </div>
-        <button id="pay-confirm-btn" style="width:100%;padding:15px;border-radius:13px;border:none;cursor:pointer;font-size:15px;font-weight:800;background:linear-gradient(135deg,#0d3012,#20d060);color:#fff;margin-bottom:8px;">
-          Yes, I paid — Activate!
-        </button>
-        <button id="pay-reopen-btn" style="width:100%;padding:11px;border-radius:13px;border:1px solid rgba(78,168,240,0.3);cursor:pointer;font-size:12px;color:#4ea8f0;background:transparent;margin-bottom:8px;">
-          Open wallet again
-        </button>
-        <button id="pay-cancel2-btn" style="width:100%;padding:9px;border-radius:13px;border:none;cursor:pointer;font-size:12px;color:#333;background:transparent;">
-          Cancel — I did not pay
-        </button>
-      </div>
+      <a id="pay-tk-btn" href="${tkLink}"
+        onclick="handlePayClick(event,'${tkLink}')"
+        style="display:block;width:100%;padding:15px;border-radius:13px;border:none;cursor:pointer;font-size:15px;font-weight:800;background:linear-gradient(135deg,#0055dd,#1a8fff);color:#fff;margin-bottom:10px;text-align:center;text-decoration:none;box-sizing:border-box;">
+        Open Tonkeeper — Send ${amount.toFixed(2)} TON
+      </a>
+
+      <button id="pay-verify-btn" onclick="verifyPayment(${nano},${amount})"
+        style="width:100%;padding:13px;border-radius:13px;border:1px solid rgba(32,208,96,0.3);cursor:pointer;font-size:14px;font-weight:700;color:#3dd68c;background:#0a1a0e;margin-bottom:8px;">
+        Verify Payment on Blockchain
+      </button>
+
+      <button id="pay-cancel-btn"
+        style="width:100%;padding:10px;border-radius:13px;border:none;cursor:pointer;font-size:12px;color:#444;background:transparent;">
+        Cancel
+      </button>
     </div>`;
 
   document.body.appendChild(modal);
 
-  function openWallet(){
-    walletOpened = true;
-    if(tg){
-      tg.openLink(tonLink);
-    }else{
-      window.open(tonLink, "_blank");
-    }
-    // Show step 2 after 3 seconds
-    setTimeout(()=>{
-      document.getElementById("pay-step1").style.display = "none";
-      document.getElementById("pay-step2").style.display = "block";
-    }, 3000);
-  }
-
-  document.getElementById("pay-open-btn").onclick = openWallet;
-  document.getElementById("pay-reopen-btn").onclick = openWallet;
-
-  document.getElementById("pay-confirm-btn").onclick = function(){
-    if(!walletOpened){
-      toast("Please open your wallet first!","var(--red)");
-      return;
-    }
-    modal.remove();
-    if(onSuccess) onSuccess();
-  };
+  // Store callbacks globally for verify function
+  window._paySuccess = onSuccess;
+  window._payCancel = onCancel;
+  window._payAmount = amount;
 
   document.getElementById("pay-cancel-btn").onclick = function(){
     modal.remove();
     if(onCancel) onCancel();
   };
 
-  document.getElementById("pay-cancel2-btn").onclick = function(){
-    modal.remove();
-    if(onCancel) onCancel();
-    toast("Purchase cancelled","var(--blue)");
-  };
-
   modal.addEventListener("click", function(e){
-    if(e.target === modal){ modal.remove(); if(onCancel) onCancel(); }
+    if(e.target===modal){ modal.remove(); if(onCancel) onCancel(); }
   });
+}
+
+function handlePayClick(e, link){
+  // Try tg.openLink first (works in Telegram)
+  if(tg && tg.openLink){
+    e.preventDefault();
+    tg.openLink(link);
+  }else if(tg && tg.openTelegramLink){
+    e.preventDefault();
+    window.open(link,"_blank");
+  }
+  // Show verify button hint after 2s
+  setTimeout(()=>{
+    const st = document.getElementById("pay-status");
+    if(st) st.innerHTML = "After sending in Tonkeeper, tap <strong style=\"color:#3dd68c;\">Verify Payment</strong> to confirm on blockchain.";
+  }, 2000);
+}
+
+async function verifyPayment(nanoAmount, amount){
+  const btn = document.getElementById("pay-verify-btn");
+  const st = document.getElementById("pay-status");
+  if(!btn||!st) return;
+
+  btn.textContent = "Checking blockchain...";
+  btn.disabled = true;
+  btn.style.color = "#888";
+  st.innerHTML = "Checking TON blockchain for your transaction...";
+
+  try{
+    // Check last transactions TO owner wallet FROM player wallet
+    const resp = await fetch(
+      TONCENTER+"/getTransactions?address="+OWNER+"&limit=10",
+      {headers:{"X-API-Key":""}}
+    );
+    const data = await resp.json();
+
+    if(data.ok && data.result){
+      const txs = data.result;
+      const now = Math.floor(Date.now()/1000);
+      // Look for transaction in last 10 minutes matching amount
+      const found = txs.find(tx=>{
+        const msgVal = tx.in_msg ? parseInt(tx.in_msg.value||"0") : 0;
+        const timeDiff = now - tx.utime;
+        const amountMatch = Math.abs(msgVal - nanoAmount) < 1000000; // within 0.001 TON
+        return timeDiff < 600 && amountMatch; // within 10 minutes
+      });
+
+      if(found){
+        // Payment verified on blockchain!
+        st.innerHTML = "<span style=\"color:#3dd68c;\">✅ Payment verified on blockchain!</span>";
+        setTimeout(()=>{
+          const modal = document.getElementById("pay-modal");
+          if(modal) modal.remove();
+          if(window._paySuccess) window._paySuccess();
+        }, 1000);
+      }else{
+        // Not found yet
+        st.innerHTML = "<span style=\"color:#f0c040;\">⏳ Transaction not found yet. Send the payment first, then verify again.</span>";
+        btn.textContent = "Verify Again";
+        btn.disabled = false;
+        btn.style.color = "#3dd68c";
+      }
+    }else{
+      throw new Error("API error");
+    }
+  }catch(e){
+    console.error("Verify error:", e);
+    // Fallback: show manual confirm if blockchain check fails
+    st.innerHTML = "Could not check blockchain automatically.<br>Did you complete the payment?";
+    btn.textContent = "I Paid — Activate Anyway";
+    btn.disabled = false;
+    btn.style.color = "#f0c040";
+    btn.onclick = function(){
+      const modal = document.getElementById("pay-modal");
+      if(modal) modal.remove();
+      if(window._paySuccess) window._paySuccess();
+    };
+  }
 }
 // ────────────────────────────────────────────────────────────────
 
