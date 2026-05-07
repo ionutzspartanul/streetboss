@@ -454,19 +454,24 @@ function initTonConnect(){
       manifestUrl: "https://streetboss-production.up.railway.app/tonconnect-manifest.json",
       buttonRootId: null
     });
+    // Disconnect any previous session immediately on load
+    // User must explicitly tap Connect button
+    tonConnectUI.disconnect().catch(()=>{});
     tonConnectUI.onStatusChange(wallet => {
-      if(wallet){
+      if(wallet && userInitiatedConnect){
+        // Only accept connection if USER pressed the button
         const addr = wallet.account.address;
         walletAddr = addr;
         const short = addr.slice(0,6)+"..."+addr.slice(-4);
         document.getElementById("w-addr").textContent = short;
-        document.getElementById("w-connect-btn").textContent = "Connected: "+short;
+        document.getElementById("w-connect-btn").textContent = "Disconnect wallet";
         document.getElementById("w-connect-btn").style.borderColor = "var(--green)";
         document.getElementById("w-connect-btn").style.color = "var(--green)";
         api("/wallet/connect","POST",{ton_address: addr});
-        toast("Wallet connected! ","var(--green)");
-      } else {
+        toast("Wallet connected!","var(--green)");
+      } else if(!wallet){
         walletAddr = null;
+        userInitiatedConnect = false;
         document.getElementById("w-addr").textContent = "Connect your TON wallet below";
         document.getElementById("w-connect-btn").textContent = "Connect TON Wallet";
         document.getElementById("w-connect-btn").style.borderColor = "rgba(78,168,240,.3)";
@@ -494,7 +499,7 @@ const NFTS=[
 ];
 
 // -- State --
-let btype=null,balance=0,accrued=0,earnRate=0,cd=3600,cdInt,playerLevel=0,playerXP=0,bizLevels={"lv1":0,"lv2":0,"lv3":0,"lv4":0,"lv5":0,"lv6":0},unlockedBosses=["hood"];
+let btype=null,balance=0,accrued=0,earnRate=0,cd=3600,cdInt,playerLevel=0,playerXP=0,bizLevels={"lv1":0,"lv2":0,"lv3":0,"lv4":0,"lv5":0,"lv6":0},unlockedBosses=["hood"],userInitiatedConnect=false;
 let ownedNFTs=[],transactions=[],friendsList=[],refCount=0,walletAddr=null;
 
 // -- Particles --
@@ -675,6 +680,11 @@ function renderNFTs(){
 }
 
 async function buyNFT(type,name,price){
+  console.log("buyNFT called:", type, name, price);
+  console.log("walletAddr:", walletAddr);
+  console.log("tonConnectUI:", !!tonConnectUI);
+  console.log("ownedNFTs:", ownedNFTs);
+
   if(!walletAddr){
     toast("Connect TON wallet first!","var(--red)");
     navTo(document.querySelectorAll(".nav-btn")[4],"wallet");
@@ -685,45 +695,70 @@ async function buyNFT(type,name,price){
     toast("You already own "+name+"!","var(--blue)");
     return;
   }
-  if(!confirm("Buy "+name+" for "+price.toFixed(2)+" TON?\nFunds go to owner wallet.")) return;
-  if(!tonConnectUI){
-    toast("TON Connect not available - refresh page","var(--red)");
-    return;
-  }
-  try{
-    toast("Confirm payment in your wallet app...","var(--blue)");
-    const nanoTon=String(Math.floor(price*1000000000));
-    await tonConnectUI.sendTransaction({
-      validUntil:Math.floor(Date.now()/1000)+600,
-      messages:[{
-        address:OWNER,
-        amount:nanoTon
-      }]
-    });
-    // Payment sent successfully!
-    ownedNFTs.push(type);
-    playerLevel++;
-    playerXP+=50;
-    balance=Math.max(0,parseFloat((balance-price).toFixed(6)));
-    document.getElementById("g-bal").textContent=balance.toFixed(2);
-    document.getElementById("w-balance").textContent=balance.toFixed(4)+" TON";
-    updateLevelDisplay();
-    renderNFTs();
-    addLocalTx("NFT "+name+" purchased",-price);
-    spawnXP("+50 XP",200,350);
-    for(let i=0;i<8;i++) setTimeout(()=>spawnCoin(180+Math.random()*80,380),i*80);
-    toast(name+" recruited! Lv."+playerLevel+" unlocked!","var(--green)");
-    api("/nft/buy","POST",{nft_type:type}).catch(()=>{});
-  }catch(e){
-    if(e&&(e.message||"").toLowerCase().includes("cancel")){
-      toast("Transaction cancelled","var(--blue)");
-    }else if(e&&(e.message||"").toLowerCase().includes("reject")){
-      toast("Transaction rejected in wallet","var(--red)");
-    }else{
-      console.error("NFT buy error:",e);
-      toast("Error: "+(e.message||"Unknown error"),"var(--red)");
+  if(!confirm("Buy "+name+" for "+price.toFixed(2)+" TON?\nPayment goes to owner wallet.")) return;
+
+  // Method 1: TON Connect sendTransaction
+  if(tonConnectUI && tonConnectUI.sendTransaction){
+    try{
+      toast("Opening wallet to confirm...","var(--blue)");
+      const nanoTon = String(Math.floor(price * 1000000000));
+      console.log("Sending transaction, nanoTon:", nanoTon, "to:", OWNER);
+      const result = await tonConnectUI.sendTransaction({
+        validUntil: Math.floor(Date.now()/1000) + 600,
+        messages:[{
+          address: OWNER,
+          amount: nanoTon
+        }]
+      });
+      console.log("Transaction result:", result);
+      _confirmNFTPurchase(type, name, price);
+      return;
+    }catch(e){
+      console.error("TON Connect tx error:", e);
+      if(e&&(e.message||"").includes("User rejects")){
+        toast("Transaction rejected in wallet","var(--red)");
+        return;
+      }
+      toast("TON Connect failed, trying fallback...","var(--blue)");
     }
   }
+
+  // Method 2: Direct TON transfer link (fallback)
+  const nanoTon = Math.floor(price * 1000000000);
+  const tonUrl = "ton://transfer/"+OWNER+"?amount="+nanoTon+"&text=StreetBoss+NFT+"+type;
+  console.log("Fallback TON URL:", tonUrl);
+  if(tg){
+    tg.openLink(tonUrl);
+    // Give user time to complete payment then confirm
+    setTimeout(()=>{
+      if(confirm("Did you complete the payment of "+price+" TON?\nTap OK to activate your NFT.")){
+        _confirmNFTPurchase(type, name, price);
+      }
+    }, 4000);
+  }else{
+    window.open(tonUrl, "_blank");
+    setTimeout(()=>{
+      if(confirm("Did you complete the TON payment?\nTap OK to activate your NFT.")){
+        _confirmNFTPurchase(type, name, price);
+      }
+    }, 3000);
+  }
+}
+
+function _confirmNFTPurchase(type, name, price){
+  ownedNFTs.push(type);
+  playerLevel++;
+  playerXP += 50;
+  balance = Math.max(0, parseFloat((balance - price).toFixed(6)));
+  document.getElementById("g-bal").textContent = balance.toFixed(2);
+  document.getElementById("w-balance").textContent = balance.toFixed(4)+" TON";
+  updateLevelDisplay();
+  renderNFTs();
+  addLocalTx("NFT "+name+" purchased", -price);
+  spawnXP("+50 XP", 200, 350);
+  for(let i=0;i<8;i++) setTimeout(()=>spawnCoin(160+Math.random()*80, 380), i*80);
+  toast(name+" recruited! Level "+playerLevel+" unlocked!", "var(--green)");
+  api("/nft/buy","POST",{nft_type:type}).catch(e=>console.error("API nft/buy error:",e));
 }
 
 // -- Friends --
@@ -779,35 +814,43 @@ function copyText(t){
 
 // -- Wallet --
 async function connectWallet(){
+  console.log("connectWallet called, walletAddr:", walletAddr, "tonConnectUI:", !!tonConnectUI);
   if(!tonConnectUI){
-    const addr=prompt("Enter TON wallet address manually:");
-    if(!addr||addr.length<20){toast("Invalid address","var(--red)");return;}
-    walletAddr=addr;
-    document.getElementById("w-addr").textContent=addr.slice(0,8)+"..."+addr.slice(-4);
-    document.getElementById("w-connect-btn").textContent="Wallet: "+addr.slice(0,6)+"...";
-    document.getElementById("w-connect-btn").style.color="var(--green)";
+    // Manual entry fallback
+    const addr = prompt("Enter your TON wallet address:");
+    if(!addr || addr.length < 20){toast("Invalid address","var(--red)");return;}
+    walletAddr = addr;
+    document.getElementById("w-addr").textContent = addr.slice(0,8)+"..."+addr.slice(-4);
+    document.getElementById("w-connect-btn").textContent = "Connected: "+addr.slice(0,8)+"... (tap to disconnect)";
+    document.getElementById("w-connect-btn").style.color = "var(--green)";
+    document.getElementById("w-connect-btn").style.borderColor = "var(--green)";
     api("/wallet/connect","POST",{ton_address:addr});
     toast("Wallet connected!","var(--green)");
     return;
   }
-  try{
-    if(walletAddr){
-      // Show disconnect option
-      const choice=confirm("Wallet connected: "+walletAddr.slice(0,10)+"..."+walletAddr.slice(-4)+"\n\nClick OK to disconnect, Cancel to keep.");
-      if(choice){
-        await tonConnectUI.disconnect();
-        walletAddr=null;
-        document.getElementById("w-addr").textContent="Connect your TON wallet below";
-        document.getElementById("w-connect-btn").textContent="Connect TON Wallet";
-        document.getElementById("w-connect-btn").style.color="var(--blue)";
-        document.getElementById("w-connect-btn").style.borderColor="rgba(78,168,240,.3)";
-        toast("Wallet disconnected","var(--blue)");
-      }
-    }else{
-      await tonConnectUI.openModal();
+  if(walletAddr){
+    // Disconnect
+    try{
+      await tonConnectUI.disconnect();
+      walletAddr = null;
+      document.getElementById("w-addr").textContent = "Connect your TON wallet below";
+      document.getElementById("w-connect-btn").textContent = "Connect TON Wallet";
+      document.getElementById("w-connect-btn").style.color = "var(--blue)";
+      document.getElementById("w-connect-btn").style.borderColor = "rgba(78,168,240,.3)";
+      toast("Wallet disconnected. Tap to connect a different wallet.","var(--blue)");
+    }catch(e){
+      console.error("Disconnect error:", e);
+      toast("Error disconnecting: "+e.message,"var(--red)");
     }
-  }catch(e){
-    toast("Wallet error: "+e.message,"var(--red)");
+  }else{
+    // Connect - open modal
+    try{
+      userInitiatedConnect=true;
+      await tonConnectUI.openModal();
+    }catch(e){
+      console.error("Connect error:", e);
+      toast("Error opening wallet: "+e.message,"var(--red)");
+    }
   }
 }
 
