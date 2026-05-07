@@ -615,13 +615,16 @@ function buildGame(type){
 
 // -- NFT Screen --
 function renderNFTs(){
-  document.getElementById("nft-grid").innerHTML=NFTS.map(n=>{
-    const owned=ownedNFTs.includes(n.type);
-    const pct=Math.round((n.power/320)*100);
+  const grid = document.getElementById("nft-grid");
+  if(!grid) return;
+  grid.innerHTML = NFTS.map(n=>{
+    const owned = ownedNFTs.includes(n.type);
+    const pct = Math.round((n.power/320)*100);
+    const pwrColor = pct>80?"var(--gold)":pct>50?"var(--purple)":"var(--blue)";
     return `
     <div class="nft-card ${owned?"owned":""} ${n.rarity==="Legendary"?"featured":""}">
       <div class="nft-row">
-        <div class="nft-ava" style="background:${n.avaColor};border:1.5px solid ${COLORS[n.rarity==="Legendary"?"don":n.rarity==="Epic"?"tatted":n.rarity==="Rare"?"hood":"hood"]}30;">${n.emoji}</div>
+        <div class="nft-ava" style="background:${n.avaColor};">${n.emoji}</div>
         <div class="nft-info">
           <div style="display:flex;justify-content:space-between;align-items:center;">
             <div class="nft-name">${n.name}</div>
@@ -629,20 +632,30 @@ function renderNFTs(){
           </div>
           <div class="nft-ability">${n.ability}</div>
           <div class="nft-power">
-            <div class="power-bar"><div class="power-fill" style="width:${pct}%;background:${pct>80?"var(--gold)":pct>50?"var(--purple)":"var(--blue);"};"></div></div>
+            <div class="power-bar"><div class="power-fill" style="width:${pct}%;background:${pwrColor};"></div></div>
             <div class="power-txt">PWR ${n.power}</div>
           </div>
         </div>
       </div>
       <div class="nft-footer">
-        <div class="nft-price">${owned?"Owned":""+n.price.toFixed(2)+" TON"}</div>
+        <div class="nft-price">${owned?"Owned":n.price.toFixed(2)+" TON"}</div>
         ${owned
-          ? `<button class="buy-btn owned-btn">\u2713 Active</button>`
-          : `<button class="buy-btn active-btn" onclick="buyNFT('${n.type}','${n.name}',${n.price})">Buy ${n.price} TON</button>`
+          ? `<button class="buy-btn owned-btn">&#x2713; Active</button>`
+          : `<button class="buy-btn active-btn" data-type="${n.type}" data-name="${n.name}" data-price="${n.price}">Buy ${n.price.toFixed(2)} TON</button>`
         }
       </div>
     </div>`;
   }).join("");
+
+  // Attach click events AFTER rendering (avoids quote escaping issues)
+  grid.querySelectorAll(".buy-btn.active-btn").forEach(btn=>{
+    btn.addEventListener("click", function(){
+      const type = this.getAttribute("data-type");
+      const name = this.getAttribute("data-name");
+      const price = parseFloat(this.getAttribute("data-price"));
+      buyNFT(type, name, price);
+    });
+  });
 }
 
 async function buyNFT(type,name,price){
