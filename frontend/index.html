@@ -585,10 +585,7 @@ function renderNFTs(){
 
 async function buyNFT(type,name,price){
   if(balance<price){toast("Insufficient TON balance!","var(--red)");return;}
-  if(!confirm("Buy "+name+" for "+price+" TON?
-
-Payment goes to owner wallet:
-"+OWNER.slice(0,16)+"...")) return;
+  if(!confirm("Buy "+name+" for "+price+" TON? Payment goes to owner wallet: "+OWNER.slice(0,16)+"...")) return;
   const res=await api("/nft/buy","POST",{nft_type:type});
   if(res.success){
     balance=parseFloat((balance-price).toFixed(6));
@@ -630,8 +627,7 @@ async function loadFriends(){
 
 function shareLink(){
   const link="https://t.me/StreetFinalBossBot?start=ref_"+UID;
-  const text="Join StreetBoss - build your street empire & earn real TON! \uD83C\uDFD9\uD83D\uDC4A
-"+link;
+  const text="Join StreetBoss - build your street empire & earn real TON! "+link;
   if(tg) tg.openTelegramLink("https://t.me/share/url?url="+encodeURIComponent(link)+"&text="+encodeURIComponent(text));
   else{copyText(link);toast("Link copied!","var(--green)");}
 }
