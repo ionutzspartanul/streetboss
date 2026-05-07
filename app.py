@@ -31,7 +31,7 @@ DB_PATH          = os.getenv("DB_PATH", "streetboss.db")
 PORT             = int(os.getenv("PORT", "8000"))
 
 GAME_FEE         = 0.05   # 5% on every transaction
-REFERRAL_REWARD  = 0.05   # TON per referral
+REFERRAL_REWARD  = 0.001  # TON per referral
 
 # ── FastAPI app ───────────────────────────────────────────────────────────────
 app = FastAPI(title="StreetBoss", docs_url=None, redoc_url=None)
@@ -710,6 +710,16 @@ async def serve_admin(request: Request):
 @app.get("/health")
 async def health():
     return {"status": "ok", "game": "StreetBoss", "version": "2.0"}
+
+@app.get("/tonconnect-manifest.json")
+async def ton_manifest():
+    return {
+        "url": "https://streetboss-production.up.railway.app",
+        "name": "StreetBoss",
+        "iconUrl": "https://streetboss-production.up.railway.app/static/streetboss_icon.png",
+        "termsOfUseUrl": "https://streetboss-production.up.railway.app",
+        "privacyPolicyUrl": "https://streetboss-production.up.railway.app"
+    }
 
 # ── Run ───────────────────────────────────────────────────────────────────────
 if __name__ == "__main__":
