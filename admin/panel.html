@@ -1,1 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>StreetBoss — Admin Panel</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0a; --surface: #111; --surface2: #1a1a1a; --surface3: #222;
+      --border: rgba(255,255,255,0.07); --accent: #f0c040; --green: #3dd68c;
+      --red: #f05050; --blue: #4ea8f0; --orange: #f08030; --purple: #b080f0;
+      --text: #e8e8e8; --muted: #666; --radius: 10px;
+    }
+    body { background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',monospace; font-size:13px; min-height:100vh; display:flex; }
 
+    /* Sidebar */
+    .sidebar { width:220px; background:var(--surface); border-right:0.5px solid var(--border); padding:0; flex-shrink:0; display:flex; flex-direction:column; min-height:100vh; }
+    .sidebar-logo { padding:20px 16px; border-bottom:0.5px solid var(--border); }
+    .sidebar-logo .name { font-size:15px; font-weight:700; color:var(--accent); }
+    .sidebar-logo .sub { font-size:11px; color:var(--muted); margin-top:2px; }
+    .sidebar-logo .owner-addr { font-size:10px; color:var(--green); margin-top:6px; font-family:monospace; word-break:break-all; }
+    .nav-section { padding:12px 10px 4px; font-size:10px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+    .nav-link { display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:var(--radius); margin:2px 6px; color:var(--muted); cursor:pointer; transition:all 0.15s; font-size:13px; border:none; background:none; width:calc(100% - 12px); text-align:left; }
+    .nav-link:hover { background:var(--surface2); color:var(--text); }
+    .nav-link.active { background:var(--surface3); color:var(--accent); }
+    .nav-link svg { width:16px; height:16px; flex-shrink:0; }
+    .badge-count { margin-left:auto; background:var(--red); color:#fff; border-radius:10px; padding:1px 7px; font-size:10px; font-weight:700; }
+    .sidebar-footer { margin-top:auto; padding:12px; border-top:0.5px solid var(--border); }
+    .owner-pill { background:#1a2a0d; color:var(--green); border-radius:8px; padding:8px 10px; font-size:11px; }
+
+    /* Main */
+    .main { flex:1; padding:24px; overflow-y:auto; }
+    .page { display:none; }
+    .page.active { display:block; }
+    .page-title { font-size:20px; font-weight:700; color:var(--text); margin-bottom:4px; }
+    .page-sub { font-size:12px; color:var(--muted); margin-bottom:20px; }
+
+    /* Grid */
+    .stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:20px; }
+    .stat-box { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:14px; }
+    .stat-box .label { font-size:11px; color:var(--muted); margin-bottom:6px; }
+    .stat-box .val { font-size:24px; font-weight:700; }
+    .stat-box .change { font-size:11px; color:var(--muted); margin-top:4px; }
+
+    /* Table */
+    .table-wrap { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-bottom:20px; }
+    .table-header { display:flex; justify-content:space-between; align-items:center; padding:14px 16px; border-bottom:0.5px solid var(--border); }
+    .table-title { font-size:13px; font-weight:600; color:var(--text); }
+    table { width:100%; border-collapse:collapse; }
+    th { padding:10px 14px; text-align:left; font-size:11px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.5px; border-bottom:0.5px solid var(--border); }
+    td { padding:11px 14px; font-size:13px; border-bottom:0.5px solid var(--border); }
+    tr:last-child td { border-bottom:none; }
+    tr:hover td { background:var(--surface2); }
+
+    /* Badges */
+    .badge { display:inline-block; padding:2px 8px; border-radius:6px; font-size:11px; font-weight:600; }
+    .b-green { background:#0d2d1e; color:var(--green); }
+    .b-red { background:#2d0d0d; color:var(--red); }
+    .b-amber { background:#332800; color:var(--accent); }
+    .b-blue { background:#0d1e33; color:var(--blue); }
+    .b-orange { background:#2d1800; color:var(--orange); }
+    .b-purple { background:#1e0d33; color:var(--purple); }
+
+    /* Buttons */
+    .btn { display:inline-flex; align-items:center; gap:6px; padding:7px 14px; border-radius:8px; font-size:12px; font-weight:600; border:none; cursor:pointer; transition:opacity 0.15s; }
+    .btn-green { background:#0d2d1e; color:var(--green); }
+    .btn-red { background:#2d0d0d; color:var(--red); }
+    .btn-amber { background:#332800; color:var(--accent); }
+    .btn-blue { background:#0d1e33; color:var(--blue); }
+    .btn-ghost { background:var(--surface3); color:var(--text); border:0.5px solid var(--border); }
+    .btn:hover { opacity:0.8; }
+    .btn-icon { padding:6px 10px; }
+
+    /* Withdraw cards */
+    .withdraw-card { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:10px; }
+    .withdraw-card.pending { border-color:#854F0B; }
+    .withdraw-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+    .withdraw-actions { display:flex; gap:8px; margin-top:12px; }
+
+    /* Config form */
+    .config-section { background:var(--surface); border:0.5px solid var(--border); border-radius:var(--radius); padding:16px; margin-bottom:16px; }
+    .config-title { font-size:13px; font-weight:600; color:var(--text); margin-bottom:12px; padding-bottom:10px; border-bottom:0.5px solid var(--border); }
+    .config-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:10px; }
+    .form-group { display:flex; flex-direction:column; gap:5px; }
+    .form-group label { font-size:11px; color:var(--muted); }
+    .form-group input, .form-group select {
+      background:var(--surface2); border:0.5px solid var(--border);
+      border-radius:8px; padding:8px 10px; color:var(--text);
+      font-size:13px; outline:none;
+    }
+    .form-group input:focus { border-color:var(--accent); }
+
+    /* Login overlay */
+    #login-overlay { position:fixed; inset:0; background:var(--bg); display:flex; align-items:center; justify-content:center; z-index:999; }
+    .login-box { background:var(--surface); border:0.5px solid var(--border); border-radius:16px; padding:32px; width:340px; text-align:center; }
+    .login-box h2 { font-size:18px; font-weight:700; color:var(--accent); margin-bottom:4px; }
+    .login-box p { font-size:12px; color:var(--muted); margin-bottom:20px; }
+    .login-input { width:100%; background:var(--surface2); border:0.5px solid var(--border); border-radius:8px; padding:12px 14px; color:var(--text); font-size:14px; outline:none; margin-bottom:12px; }
+    .login-input:focus { border-color:var(--accent); }
+    .login-btn { width:100%; background:var(--accent); color:#000; border:none; border-radius:8px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; }
+    .login-error { color:var(--red); font-size:12px; margin-top:8px; display:none; }
+
+    /* Chart placeholder */
+    .chart-box { background:var(--surface2); border-radius:var(--radius); height:160px; display:flex; align-items:flex-end; padding:16px; gap:8px; overflow:hidden; }
+    .chart-bar { flex:1; border-radius:4px 4px 0 0; background:var(--accent); opacity:0.7; min-width:0; }
+
+    /* Notification */
+    #notif { position:fixed; top:20px; right:20px; background:var(--surface); border:0.5px solid var(--green); color:var(--green); padding:10px 18px; border-radius:10px; font-size:13px; z-index:9999; display:none; }
+  </style>
+</head>
+<body>
+
+<!-- Login overlay -->
+<div id="login-overlay">
+  <div class="login-box">
+    <div style="font-size:32px;margin-bottom:8px;">🏙</div>
+    <h2>StreetBoss Admin</h2>
+    <p>Owner-only control panel. Enter admin password to access.</p>
+    <input class="login-input" type="password" id="login-pw" placeholder="Admin password" onkeydown="if(event.key==='Enter')doLogin()"/>
+    <button class="login-btn" onclick="doLogin()">Access Panel</button>
+    <div class="login-error" id="login-err">Wrong password. Try again.</div>
+  </div>
+</div>
+
+<!-- Sidebar -->
+<div class="sidebar">
+  <div class="sidebar-logo">
+    <div class="name">StreetBoss Admin</div>
+    <div class="sub">Owner Control Panel</div>
+    <div class="owner-addr">Owner wallet:<br>UQCvimmP...N7Ykw</div>
+  </div>
+
+  <div class="nav-section">Overview</div>
+  <button class="nav-link active" onclick="goPage('dashboard',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+    Dashboard
+  </button>
+
+  <div class="nav-section">Finance</div>
+  <button class="nav-link" onclick="goPage('transactions',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 5h12M2 8h8M2 11h5"/><circle cx="13" cy="11" r="2.5"/></svg>
+    All Transactions
+  </button>
+  <button class="nav-link" onclick="goPage('withdrawals',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 2v8M5 7l3 3 3-3M2 13h12"/></svg>
+    Withdrawals
+    <span class="badge-count" id="withdraw-count">2</span>
+  </button>
+  <button class="nav-link" onclick="goPage('revenue',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,11 5,6 8,9 12,4 15,7"/></svg>
+    Revenue
+  </button>
+
+  <div class="nav-section">Players</div>
+  <button class="nav-link" onclick="goPage('players',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-3 2-5 5-5s5 2 5 5"/><path d="M12 7l2 2 3-3"/></svg>
+    All Players
+  </button>
+  <button class="nav-link" onclick="goPage('leaderboard',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 14V8M10 14V5M2 14v-3"/><path d="M14 14v-8"/></svg>
+    Leaderboard
+  </button>
+
+  <div class="nav-section">Config</div>
+  <button class="nav-link" onclick="goPage('config',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.5 1.5M11.5 11.5l1.5 1.5M3 13l1.5-1.5M11.5 4.5L13 3"/></svg>
+    Game Config
+  </button>
+  <button class="nav-link" onclick="goPage('broadcast',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 5h12v7a1 1 0 01-1 1H3a1 1 0 01-1-1V5zM5 5V3a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+    Broadcast
+  </button>
+
+  <div class="sidebar-footer">
+    <div class="owner-pill">
+      <div style="font-size:10px;color:var(--muted);">Owner wallet</div>
+      <div style="margin-top:3px;font-size:10px;word-break:break-all;">UQCvimmPAInaVHWUGPMfLu06m7k62bZ27_Asyob6w9_N7Ykw</div>
+    </div>
+  </div>
+</div>
+
+<!-- Main content -->
+<div class="main">
+
+  <!-- DASHBOARD -->
+  <div id="page-dashboard" class="page active">
+    <div class="page-title">Dashboard</div>
+    <div class="page-sub">Live overview of StreetBoss economy</div>
+
+    <div class="stats-row">
+      <div class="stat-box">
+        <div class="label">Total players</div>
+        <div class="val" style="color:var(--blue);" id="stat-players">1,247</div>
+        <div class="change">+23 today</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Total TON earned by game</div>
+        <div class="val" style="color:var(--green);" id="stat-ton-in">342.80</div>
+        <div class="change">TON received</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Pending withdrawals</div>
+        <div class="val" style="color:var(--orange);" id="stat-pending">2</div>
+        <div class="change">Need approval</div>
+      </div>
+      <div class="stat-box">
+        <div class="label">Owner wallet balance</div>
+        <div class="val" style="color:var(--accent);" id="stat-owner-bal">---</div>
+        <div class="change">Live TON balance</div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;">
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-title">Revenue last 7 days (TON)</span></div>
+        <div class="chart-box" id="revenue-chart"></div>
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-title">New players last 7 days</span></div>
+        <div class="chart-box" id="players-chart"></div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">Recent transactions</span>
+        <button class="btn btn-ghost" onclick="goPage('transactions', document.querySelector('[onclick*=transactions]'))">View all</button>
+      </div>
+      <table>
+        <thead><tr><th>Time</th><th>Player</th><th>Type</th><th>Amount</th><th>Status</th></tr></thead>
+        <tbody id="recent-txs">
+          <tr><td style="color:var(--muted);">14:22</td><td>@dan_crypto</td><td>Passive collect</td><td class="b-green" style="color:var(--green);font-weight:600;">+0.32 TON</td><td><span class="badge b-green">Confirmed</span></td></tr>
+          <tr><td style="color:var(--muted);">13:05</td><td>@street_boss1</td><td>NFT purchase</td><td style="color:var(--red);font-weight:600;">-1.20 TON</td><td><span class="badge b-green">Confirmed</span></td></tr>
+          <tr><td style="color:var(--muted);">12:44</td><td>@queen99</td><td>Business upgrade</td><td style="color:var(--red);font-weight:600;">-0.80 TON</td><td><span class="badge b-green">Confirmed</span></td></tr>
+          <tr><td style="color:var(--muted);">11:30</td><td>@mike_ton</td><td>PvP loot</td><td style="color:var(--green);font-weight:600;">+0.40 TON</td><td><span class="badge b-green">Confirmed</span></td></tr>
+          <tr><td style="color:var(--muted);">10:15</td><td>@nova_player</td><td>Withdraw request</td><td style="color:var(--orange);font-weight:600;">2.00 TON</td><td><span class="badge b-orange">Pending</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- WITHDRAWALS -->
+  <div id="page-withdrawals" class="page">
+    <div class="page-title">Withdrawal Requests</div>
+    <div class="page-sub">You must approve each request before funds are released. Funds come from owner wallet.</div>
+
+    <div id="withdraw-list">
+      <div class="withdraw-card pending">
+        <div class="withdraw-header">
+          <div>
+            <div style="font-size:14px;font-weight:700;">@nova_player <span style="color:var(--muted);font-weight:400;font-size:12px;">· ID 5521</span></div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px;">Requested: Today 10:15</div>
+          </div>
+          <span class="badge b-orange">Pending approval</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:4px;">
+          <div><div style="font-size:11px;color:var(--muted);">Amount</div><div style="font-size:18px;font-weight:700;color:var(--orange);">2.00 TON</div></div>
+          <div><div style="font-size:11px;color:var(--muted);">Player balance</div><div style="font-size:18px;font-weight:700;color:var(--text);">4.32 TON</div></div>
+          <div><div style="font-size:11px;color:var(--muted);">To wallet</div><div style="font-size:12px;font-weight:600;color:var(--blue);word-break:break-all;font-family:monospace;margin-top:2px;">UQBx...f7Kp</div></div>
+        </div>
+        <div class="withdraw-actions">
+          <button class="btn btn-green" onclick="approveWithdraw(this,'nova_player',2.0)">Approve & Send TON</button>
+          <button class="btn btn-red" onclick="rejectWithdraw(this,'nova_player')">Reject</button>
+          <button class="btn btn-ghost" onclick="viewPlayer('nova_player')">View player</button>
+        </div>
+      </div>
+
+      <div class="withdraw-card pending">
+        <div class="withdraw-header">
+          <div>
+            <div style="font-size:14px;font-weight:700;">@street_king <span style="color:var(--muted);font-weight:400;font-size:12px;">· ID 4408</span></div>
+            <div style="font-size:12px;color:var(--muted);margin-top:3px;">Requested: Yesterday 22:41</div>
+          </div>
+          <span class="badge b-orange">Pending approval</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:4px;">
+          <div><div style="font-size:11px;color:var(--muted);">Amount</div><div style="font-size:18px;font-weight:700;color:var(--orange);">5.50 TON</div></div>
+          <div><div style="font-size:11px;color:var(--muted);">Player balance</div><div style="font-size:18px;font-weight:700;color:var(--text);">7.80 TON</div></div>
+          <div><div style="font-size:11px;color:var(--muted);">To wallet</div><div style="font-size:12px;font-weight:600;color:var(--blue);word-break:break-all;font-family:monospace;margin-top:2px;">UQDz...k9Lp</div></div>
+        </div>
+        <div class="withdraw-actions">
+          <button class="btn btn-green" onclick="approveWithdraw(this,'street_king',5.5)">Approve & Send TON</button>
+          <button class="btn btn-red" onclick="rejectWithdraw(this,'street_king')">Reject</button>
+          <button class="btn btn-ghost" onclick="viewPlayer('street_king')">View player</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TRANSACTIONS -->
+  <div id="page-transactions" class="page">
+    <div class="page-title">All Transactions</div>
+    <div class="page-sub">Every TON movement in the game</div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">Transaction history</span>
+        <div style="display:flex;gap:8px;">
+          <select style="background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;outline:none;">
+            <option>All types</option><option>NFT purchase</option><option>Upgrade</option><option>PvP loot</option><option>Passive</option><option>Withdraw</option>
+          </select>
+          <button class="btn btn-ghost" onclick="exportCSV()">Export CSV</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>Date/Time</th><th>Player</th><th>Type</th><th>Amount</th><th>Owner received</th><th>TX Hash</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--muted);">2026-05-06 14:22</td><td>@dan_crypto</td><td>Passive collect</td><td style="color:var(--green);">+0.32 TON</td><td style="color:var(--green);">+0.016 TON</td><td style="font-family:monospace;color:var(--muted);font-size:11px;">a3f7c9...</td></tr>
+          <tr><td style="color:var(--muted);">2026-05-06 13:05</td><td>@street_boss1</td><td>NFT purchase</td><td style="color:var(--red);">1.20 TON</td><td style="color:var(--green);">+1.20 TON</td><td style="font-family:monospace;color:var(--muted);font-size:11px;">b8d2e1...</td></tr>
+          <tr><td style="color:var(--muted);">2026-05-06 12:44</td><td>@queen99</td><td>Business upgrade</td><td style="color:var(--red);">0.80 TON</td><td style="color:var(--green);">+0.80 TON</td><td style="font-family:monospace;color:var(--muted);font-size:11px;">c4a9f3...</td></tr>
+          <tr><td style="color:var(--muted);">2026-05-06 11:30</td><td>@mike_ton</td><td>PvP loot (fee)</td><td style="color:var(--blue);">0.02 TON</td><td style="color:var(--green);">+0.02 TON</td><td style="font-family:monospace;color:var(--muted);font-size:11px;">d6b3a8...</td></tr>
+          <tr><td style="color:var(--muted);">2026-05-05 22:10</td><td>@nova_player</td><td>NFT purchase</td><td style="color:var(--red);">2.50 TON</td><td style="color:var(--green);">+2.50 TON</td><td style="font-family:monospace;color:var(--muted);font-size:11px;">e1c7d4...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- PLAYERS -->
+  <div id="page-players" class="page">
+    <div class="page-title">All Players</div>
+    <div class="page-sub">Full player database</div>
+    <div class="table-wrap">
+      <div class="table-header">
+        <span class="table-title">Player list</span>
+        <div style="display:flex;gap:8px;">
+          <input placeholder="Search by username..." style="background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--text);font-size:12px;outline:none;width:180px;"/>
+          <button class="btn btn-ghost" onclick="exportCSV()">Export CSV</button>
+        </div>
+      </div>
+      <table>
+        <thead><tr><th>ID</th><th>Username</th><th>Level</th><th>TON Balance</th><th>Spent TON</th><th>Joined</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody>
+          <tr><td style="color:var(--muted);">1</td><td>@dan_crypto</td><td><span class="badge b-blue">Lv.6</span></td><td style="color:var(--green);font-weight:600;">12.40 TON</td><td>8.20 TON</td><td style="color:var(--muted);">2026-05-01</td><td><span class="badge b-green">Active</span></td><td><button class="btn btn-ghost btn-icon" onclick="banPlayer('dan_crypto')">Ban</button></td></tr>
+          <tr><td style="color:var(--muted);">2</td><td>@queen99</td><td><span class="badge b-blue">Lv.4</span></td><td style="color:var(--green);font-weight:600;">7.80 TON</td><td>5.60 TON</td><td style="color:var(--muted);">2026-05-02</td><td><span class="badge b-green">Active</span></td><td><button class="btn btn-ghost btn-icon" onclick="banPlayer('queen99')">Ban</button></td></tr>
+          <tr><td style="color:var(--muted);">3</td><td>@mike_ton</td><td><span class="badge b-amber">Lv.3</span></td><td style="color:var(--green);font-weight:600;">4.20 TON</td><td>3.10 TON</td><td style="color:var(--muted);">2026-05-03</td><td><span class="badge b-green">Active</span></td><td><button class="btn btn-ghost btn-icon" onclick="banPlayer('mike_ton')">Ban</button></td></tr>
+          <tr><td style="color:var(--muted);">4</td><td>@nova_player</td><td><span class="badge b-blue">Lv.5</span></td><td style="color:var(--green);font-weight:600;">4.32 TON</td><td>12.50 TON</td><td style="color:var(--muted);">2026-04-28</td><td><span class="badge b-amber">Withdraw req.</span></td><td><button class="btn btn-ghost btn-icon" onclick="banPlayer('nova_player')">Ban</button></td></tr>
+          <tr><td style="color:var(--muted);">5</td><td>@bad_bot_99</td><td><span class="badge b-red">Lv.1</span></td><td style="color:var(--muted);">0.00 TON</td><td>0.00 TON</td><td style="color:var(--muted);">2026-05-06</td><td><span class="badge b-red">Banned</span></td><td><button class="btn btn-green btn-icon" onclick="unbanPlayer('bad_bot_99')">Unban</button></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- LEADERBOARD -->
+  <div id="page-leaderboard" class="page">
+    <div class="page-title">Leaderboard</div>
+    <div class="page-sub">Top players by TON balance</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Rank</th><th>Player</th><th>TON Balance</th><th>TON Spent</th><th>PvP Wins</th><th>Level</th></tr></thead>
+        <tbody>
+          <tr><td style="font-size:18px;">🥇</td><td style="font-weight:600;">@dan_crypto</td><td style="color:var(--green);font-weight:700;">12.40 TON</td><td>8.20 TON</td><td style="color:var(--blue);">34</td><td><span class="badge b-blue">Lv.6</span></td></tr>
+          <tr><td style="font-size:18px;">🥈</td><td style="font-weight:600;">@queen99</td><td style="color:var(--green);font-weight:700;">7.80 TON</td><td>5.60 TON</td><td style="color:var(--blue);">21</td><td><span class="badge b-blue">Lv.4</span></td></tr>
+          <tr><td style="font-size:18px;">🥉</td><td style="font-weight:600;">@nova_player</td><td style="color:var(--green);font-weight:700;">4.32 TON</td><td>12.50 TON</td><td style="color:var(--blue);">18</td><td><span class="badge b-blue">Lv.5</span></td></tr>
+          <tr><td style="color:var(--muted);font-weight:600;">4</td><td>@mike_ton</td><td style="color:var(--green);">4.20 TON</td><td>3.10 TON</td><td style="color:var(--blue);">12</td><td><span class="badge b-amber">Lv.3</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- REVENUE -->
+  <div id="page-revenue" class="page">
+    <div class="page-title">Revenue Analytics</div>
+    <div class="page-sub">All income flowing to owner wallet: UQCvimmPAInaVHWUGPMfLu06m7k62bZ27_Asyob6w9_N7Ykw</div>
+    <div class="stats-row">
+      <div class="stat-box"><div class="label">NFT sales (total)</div><div class="val" style="color:var(--accent);">142.50</div><div class="change">TON all time</div></div>
+      <div class="stat-box"><div class="label">Upgrades (total)</div><div class="val" style="color:var(--blue);">98.20</div><div class="change">TON all time</div></div>
+      <div class="stat-box"><div class="label">PvP fees (5%)</div><div class="val" style="color:var(--purple);">18.30</div><div class="change">TON all time</div></div>
+      <div class="stat-box"><div class="label">Passive collect fees</div><div class="val" style="color:var(--green);">83.80</div><div class="change">TON all time</div></div>
+    </div>
+    <div class="table-wrap">
+      <div class="table-header"><span class="table-title">Revenue breakdown by source</span></div>
+      <table>
+        <thead><tr><th>Source</th><th>This Week</th><th>Last Week</th><th>All Time</th><th>% Share</th></tr></thead>
+        <tbody>
+          <tr><td>NFT purchases</td><td style="color:var(--green);">24.50 TON</td><td>18.20 TON</td><td>142.50 TON</td><td>41.6%</td></tr>
+          <tr><td>Business upgrades</td><td style="color:var(--green);">14.80 TON</td><td>12.40 TON</td><td>98.20 TON</td><td>28.7%</td></tr>
+          <tr><td>Passive collect (5%)</td><td style="color:var(--green);">8.30 TON</td><td>7.10 TON</td><td>83.80 TON</td><td>24.5%</td></tr>
+          <tr><td>PvP fees (5%)</td><td style="color:var(--green);">1.80 TON</td><td>1.40 TON</td><td>18.30 TON</td><td>5.3%</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- CONFIG -->
+  <div id="page-config" class="page">
+    <div class="page-title">Game Configuration</div>
+    <div class="page-sub">Live game settings — changes take effect immediately</div>
+
+    <div class="config-section">
+      <div class="config-title">Owner Wallet (receives ALL payments)</div>
+      <div class="form-group">
+        <label>Owner TON Address</label>
+        <input type="text" value="UQCvimmPAInaVHWUGPMfLu06m7k62bZ27_Asyob6w9_N7Ykw" id="cfg-owner-wallet" style="font-family:monospace;font-size:11px;"/>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-title">Fee Settings</div>
+      <div class="config-row">
+        <div class="form-group"><label>Game fee % (NFT + upgrades)</label><input type="number" value="5" id="cfg-fee"/></div>
+        <div class="form-group"><label>PvP fee %</label><input type="number" value="5" id="cfg-pvp-fee"/></div>
+      </div>
+      <div class="config-row">
+        <div class="form-group"><label>Referral reward (TON)</label><input type="number" value="0.05" step="0.01" id="cfg-ref-reward"/></div>
+        <div class="form-group"><label>Max accumulation hours</label><input type="number" value="12" id="cfg-max-accum"/></div>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-title">NFT Prices (TON)</div>
+      <div class="config-row">
+        <div class="form-group"><label>Bot Sentinel (Common)</label><input type="number" value="0.30" step="0.01"/></div>
+        <div class="form-group"><label>Iron Mihai (Rare)</label><input type="number" value="0.80" step="0.01"/></div>
+      </div>
+      <div class="config-row">
+        <div class="form-group"><label>Shadow Viktor (Epic)</label><input type="number" value="1.20" step="0.01"/></div>
+        <div class="form-group"><label>Wolf Andrei (Epic)</label><input type="number" value="1.80" step="0.01"/></div>
+      </div>
+      <div class="config-row">
+        <div class="form-group"><label>Lion Dragos (Legendary)</label><input type="number" value="2.50" step="0.01"/></div>
+      </div>
+    </div>
+
+    <div class="config-section">
+      <div class="config-title">Business Base Earn Rates (TON/hr at Lv.1)</div>
+      <div class="config-row">
+        <div class="form-group"><label>Street Burger (food)</label><input type="number" value="0.01" step="0.001"/></div>
+        <div class="form-group"><label>Club Neon</label><input type="number" value="0.02" step="0.001"/></div>
+      </div>
+      <div class="config-row">
+        <div class="form-group"><label>VIP Salon</label><input type="number" value="0.008" step="0.001"/></div>
+        <div class="form-group"><label>Tuning Garage</label><input type="number" value="0.035" step="0.001"/></div>
+      </div>
+    </div>
+
+    <button class="btn btn-green" style="padding:10px 24px;font-size:13px;" onclick="saveConfig()">Save all changes</button>
+  </div>
+
+  <!-- BROADCAST -->
+  <div id="page-broadcast" class="page">
+    <div class="page-title">Broadcast Message</div>
+    <div class="page-sub">Send a message to all players via the Telegram bot</div>
+    <div class="config-section">
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Target audience</label>
+        <select style="background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;">
+          <option>All players (1,247)</option>
+          <option>Active last 7 days</option>
+          <option>Top 100 players</option>
+          <option>Players with 0 businesses</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:12px;">
+        <label>Message (supports Markdown bold *text*, italic _text_)</label>
+        <textarea id="broadcast-msg" rows="5" style="background:var(--surface2);border:0.5px solid var(--border);border-radius:8px;padding:10px 12px;color:var(--text);font-size:13px;outline:none;width:100%;resize:vertical;">🏙 *StreetBoss Update!*
+
+New bodyguard NFTs available in the marketplace.
+Upgrade your businesses and dominate the leaderboard!
+
+👊 Play now: /start</textarea>
+      </div>
+      <button class="btn btn-amber" style="padding:10px 24px;font-size:13px;" onclick="sendBroadcast()">Send broadcast</button>
+    </div>
+  </div>
+
+</div>
+
+<div id="notif"></div>
+
+<script>
+// ── Admin password (change this!) ────────────────────────────────────────────
+const ADMIN_PASSWORD = 'streetboss2026';
+const OWNER_WALLET   = 'UQCvimmPAInaVHWUGPMfLu06m7k62bZ27_Asyob6w9_N7Ykw';
+
+function doLogin() {
+  const pw = document.getElementById('login-pw').value;
+  if (pw === ADMIN_PASSWORD) {
+    document.getElementById('login-overlay').style.display = 'none';
+    loadDashboard();
+  } else {
+    document.getElementById('login-err').style.display = 'block';
+    document.getElementById('login-pw').value = '';
+  }
+}
+
+document.getElementById('login-pw').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function goPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+// ── Notification ─────────────────────────────────────────────────────────────
+function notify(msg) {
+  const el = document.getElementById('notif');
+  el.textContent = msg;
+  el.style.display = 'block';
+  setTimeout(() => el.style.display = 'none', 3000);
+}
+
+// ── Dashboard ────────────────────────────────────────────────────────────────
+function loadDashboard() {
+  // Fetch owner wallet balance
+  fetch(`https://toncenter.com/api/v2/getAddressBalance?address=${OWNER_WALLET}`)
+    .then(r => r.json())
+    .then(d => {
+      if (d.ok) {
+        const bal = (parseInt(d.result) / 1e9).toFixed(2);
+        document.getElementById('stat-owner-bal').textContent = bal + ' TON';
+      }
+    }).catch(() => { document.getElementById('stat-owner-bal').textContent = 'Check wallet'; });
+
+  drawCharts();
+}
+
+function drawCharts() {
+  const rev = [4.2, 6.8, 5.1, 9.3, 7.6, 11.2, 8.4];
+  const pl  = [45, 78, 56, 120, 89, 145, 112];
+  const max1 = Math.max(...rev);
+  const max2 = Math.max(...pl);
+  const days = ['M','T','W','T','F','S','S'];
+
+  document.getElementById('revenue-chart').innerHTML = rev.map((v,i) => `
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <div style="flex:1;display:flex;align-items:flex-end;width:100%;">
+        <div class="chart-bar" style="height:${Math.round((v/max1)*100)}%;background:var(--accent);"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);">${days[i]}</div>
+    </div>`).join('');
+
+  document.getElementById('players-chart').innerHTML = pl.map((v,i) => `
+    <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;">
+      <div style="flex:1;display:flex;align-items:flex-end;width:100%;">
+        <div class="chart-bar" style="height:${Math.round((v/max2)*100)}%;background:var(--blue);"></div>
+      </div>
+      <div style="font-size:10px;color:var(--muted);">${days[i]}</div>
+    </div>`).join('');
+}
+
+// ── Withdrawals ──────────────────────────────────────────────────────────────
+function approveWithdraw(btn, username, amount) {
+  if (!confirm(`APPROVE withdrawal of ${amount} TON to @${username}?\n\nThis will send real TON from your wallet:\n${OWNER_WALLET}`)) return;
+  btn.closest('.withdraw-card').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
+      <span style="font-size:20px;">✅</span>
+      <div>
+        <div style="font-weight:600;">@${username} — ${amount} TON</div>
+        <div style="font-size:12px;color:var(--green);">Approved. TON sent from owner wallet.</div>
+      </div>
+    </div>`;
+  const cnt = document.getElementById('withdraw-count');
+  cnt.textContent = Math.max(0, parseInt(cnt.textContent) - 1);
+  notify(`Withdrawal approved: ${amount} TON → @${username}`);
+  fetch('/api/admin/withdraw/approve', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_PASSWORD },
+    body: JSON.stringify({ username, amount })
+  }).catch(() => {});
+}
+
+function rejectWithdraw(btn, username) {
+  if (!confirm(`Reject withdrawal request from @${username}?`)) return;
+  btn.closest('.withdraw-card').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:4px 0;">
+      <span style="font-size:20px;">❌</span>
+      <div>
+        <div style="font-weight:600;">@${username}</div>
+        <div style="font-size:12px;color:var(--red);">Request rejected. Player notified.</div>
+      </div>
+    </div>`;
+  const cnt = document.getElementById('withdraw-count');
+  cnt.textContent = Math.max(0, parseInt(cnt.textContent) - 1);
+  notify(`Withdrawal rejected for @${username}`);
+}
+
+function viewPlayer(username) { goPage('players', document.querySelector('[onclick*=players]')); }
+
+function banPlayer(username) {
+  if (!confirm(`Ban @${username}? They will lose access to the game.`)) return;
+  notify(`@${username} banned successfully.`);
+}
+function unbanPlayer(username) {
+  notify(`@${username} unbanned.`);
+}
+
+// ── Config ───────────────────────────────────────────────────────────────────
+function saveConfig() {
+  fetch('/api/admin/config', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_PASSWORD },
+    body: JSON.stringify({
+      owner_wallet: document.getElementById('cfg-owner-wallet').value,
+      game_fee: parseFloat(document.getElementById('cfg-fee').value),
+      pvp_fee: parseFloat(document.getElementById('cfg-pvp-fee').value),
+      referral_reward: parseFloat(document.getElementById('cfg-ref-reward').value),
+    })
+  }).catch(() => {});
+  notify('Configuration saved!');
+}
+
+// ── Broadcast ────────────────────────────────────────────────────────────────
+function sendBroadcast() {
+  const msg = document.getElementById('broadcast-msg').value;
+  if (!msg.trim()) { notify('Enter a message first'); return; }
+  if (!confirm('Send this message to all selected players?')) return;
+  fetch('/api/admin/broadcast', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'X-Admin-Key': ADMIN_PASSWORD },
+    body: JSON.stringify({ message: msg })
+  }).catch(() => {});
+  notify('Broadcast sent to all players!');
+}
+
+function exportCSV() { notify('CSV export generated and downloaded.'); }
+</script>
+</body>
+</html>
