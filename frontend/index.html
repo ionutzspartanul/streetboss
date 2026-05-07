@@ -454,12 +454,9 @@ function initTonConnect(){
       manifestUrl: "https://streetboss-production.up.railway.app/tonconnect-manifest.json",
       buttonRootId: null
     });
-    // Disconnect any previous session immediately on load
-    // User must explicitly tap Connect button
-    tonConnectUI.disconnect().catch(()=>{});
+    // Listen for wallet connection changes
     tonConnectUI.onStatusChange(wallet => {
-      if(wallet && userInitiatedConnect){
-        // Only accept connection if USER pressed the button
+      if(wallet){
         const addr = wallet.account.address;
         walletAddr = addr;
         const short = addr.slice(0,6)+"..."+addr.slice(-4);
@@ -467,9 +464,12 @@ function initTonConnect(){
         document.getElementById("w-connect-btn").textContent = "Disconnect wallet";
         document.getElementById("w-connect-btn").style.borderColor = "var(--green)";
         document.getElementById("w-connect-btn").style.color = "var(--green)";
-        api("/wallet/connect","POST",{ton_address: addr});
-        toast("Wallet connected!","var(--green)");
-      } else if(!wallet){
+        api("/wallet/connect","POST",{ton_address: addr}).catch(()=>{});
+        if(userInitiatedConnect){
+          toast("Wallet connected!","var(--green)");
+          userInitiatedConnect = false;
+        }
+      } else {
         walletAddr = null;
         userInitiatedConnect = false;
         document.getElementById("w-addr").textContent = "Connect your TON wallet below";
@@ -478,6 +478,13 @@ function initTonConnect(){
         document.getElementById("w-connect-btn").style.color = "var(--blue)";
       }
     });
+    // Disconnect previous session silently on start
+    // Small delay so TON Connect SDK loads first
+    setTimeout(()=>{
+      if(!userInitiatedConnect && tonConnectUI.connected){
+        tonConnectUI.disconnect().catch(()=>{});
+      }
+    }, 500);
   } catch(e){
     console.log("TON Connect init failed:", e);
   }
