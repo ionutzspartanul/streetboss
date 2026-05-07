@@ -575,16 +575,16 @@ function selectBoss(type){
       // Send TON payment
       if(tonConnectUI){
         const nanoTon=String(Math.floor(boss.price*1000000000));
-        tonConnectUI.sendTransaction({
-          validUntil:Math.floor(Date.now()/1000)+600,
-          messages:[{address:OWNER,amount:nanoTon}]
-        }).then(()=>{
-          unlockedBosses.push(type);
-          toast(boss.name+" UNLOCKED!","var(--gold)");
-          setTimeout(()=>_activateBoss(type),500);
-        }).catch(e=>{
-          toast("Payment cancelled","var(--blue)");
-        });
+        sendTONPayment(
+          boss.price,
+          "Unlock "+boss.name,
+          function(){
+            unlockedBosses.push(type);
+            toast(boss.name+" UNLOCKED!","var(--gold)");
+            setTimeout(()=>_activateBoss(type),500);
+          },
+          function(){ toast("Payment cancelled","var(--blue)"); }
+        );
         return;
       }else{
         toast("Connect TON wallet first!","var(--red)");
@@ -680,11 +680,6 @@ function renderNFTs(){
 }
 
 async function buyNFT(type,name,price){
-  console.log("buyNFT called:", type, name, price);
-  console.log("walletAddr:", walletAddr);
-  console.log("tonConnectUI:", !!tonConnectUI);
-  console.log("ownedNFTs:", ownedNFTs);
-
   if(!walletAddr){
     toast("Connect TON wallet first!","var(--red)");
     navTo(document.querySelectorAll(".nav-btn")[4],"wallet");
@@ -695,54 +690,12 @@ async function buyNFT(type,name,price){
     toast("You already own "+name+"!","var(--blue)");
     return;
   }
-  if(!confirm("Buy "+name+" for "+price.toFixed(2)+" TON?\nPayment goes to owner wallet.")) return;
-
-  // Method 1: TON Connect sendTransaction
-  if(tonConnectUI && tonConnectUI.sendTransaction){
-    try{
-      toast("Opening wallet to confirm...","var(--blue)");
-      const nanoTon = String(Math.floor(price * 1000000000));
-      console.log("Sending transaction, nanoTon:", nanoTon, "to:", OWNER);
-      const result = await tonConnectUI.sendTransaction({
-        validUntil: Math.floor(Date.now()/1000) + 600,
-        messages:[{
-          address: OWNER,
-          amount: nanoTon
-        }]
-      });
-      console.log("Transaction result:", result);
-      _confirmNFTPurchase(type, name, price);
-      return;
-    }catch(e){
-      console.error("TON Connect tx error:", e);
-      if(e&&(e.message||"").includes("User rejects")){
-        toast("Transaction rejected in wallet","var(--red)");
-        return;
-      }
-      toast("TON Connect failed, trying fallback...","var(--blue)");
-    }
-  }
-
-  // Method 2: Direct TON transfer link (fallback)
-  const nanoTon = Math.floor(price * 1000000000);
-  const tonUrl = "ton://transfer/"+OWNER+"?amount="+nanoTon+"&text=StreetBoss+NFT+"+type;
-  console.log("Fallback TON URL:", tonUrl);
-  if(tg){
-    tg.openLink(tonUrl);
-    // Give user time to complete payment then confirm
-    setTimeout(()=>{
-      if(confirm("Did you complete the payment of "+price+" TON?\nTap OK to activate your NFT.")){
-        _confirmNFTPurchase(type, name, price);
-      }
-    }, 4000);
-  }else{
-    window.open(tonUrl, "_blank");
-    setTimeout(()=>{
-      if(confirm("Did you complete the TON payment?\nTap OK to activate your NFT.")){
-        _confirmNFTPurchase(type, name, price);
-      }
-    }, 3000);
-  }
+  sendTONPayment(
+    price,
+    "NFT "+name,
+    function(){ _confirmNFTPurchase(type, name, price); },
+    function(){ toast("Purchase cancelled","var(--blue)"); }
+  );
 }
 
 function _confirmNFTPurchase(type, name, price){
@@ -914,44 +867,142 @@ async function buyStartPack(){
     toast("Start Pack already purchased!","var(--blue)");
     return;
   }
-  try{
-    toast("Opening wallet for 5 TON payment...","var(--blue)");
-    const nanoTon=String(5*1000000000);
-    await tonConnectUI.sendTransaction({
-      validUntil:Math.floor(Date.now()/1000)+600,
-      messages:[{address:OWNER,amount:nanoTon,payload:""}]
-    });
-    // Payment confirmed!
-    ownedNFTs.push("iron_mihai","sentinel","start_pack_bought");
-    balance=parseFloat((balance-5).toFixed(6));
-    playerLevel+=2;
-    playerXP+=200;
-    // Upgrade food to lv2, club to lv1
-    document.getElementById("lv1").textContent="Lv.2";
-    document.getElementById("lv2").textContent="Lv.1";
-    earnRate=0.04; // Food Lv2 + Club Lv1
-    document.getElementById("g-rate").textContent=earnRate.toFixed(4);
-    document.getElementById("g-rate2").textContent=earnRate.toFixed(4);
-    updateLevelDisplay();
-    document.getElementById("g-bal").textContent=balance.toFixed(2);
-    document.getElementById("w-balance").textContent=balance.toFixed(4)+" TON";
-    addLocalTx("Start Pack purchased",-5);
-    // Hide start pack banner
-    const banner=document.getElementById("start-pack-banner");
-    if(banner) banner.style.display="none";
-    renderNFTs();
-    // Coins explosion
-    for(let i=0;i<20;i++){
-      setTimeout(()=>spawnCoin(190+Math.random()*100-50,400+Math.random()*100-50),i*60);
-    }
-    toast("START PACK activated! +2 Levels, 2 NFTs, businesses unlocked!","var(--gold)");
-    // Tell backend
-    await api("/nft/buy","POST",{nft_type:"iron_mihai"});
-    await api("/nft/buy","POST",{nft_type:"sentinel"});
-  }catch(e){
-    toast("Purchase cancelled","var(--red)");
-  }
+  sendTONPayment(
+    5.0,
+    "Start Pack (2 NFTs + upgrades)",
+    function(){
+      // Activate start pack
+      ownedNFTs.push("iron_mihai","sentinel","start_pack_bought");
+      balance=Math.max(0,parseFloat((balance-5).toFixed(6)));
+      playerLevel+=2; playerXP+=200;
+      document.getElementById("lv1").textContent="Lv.2";
+      document.getElementById("lv2").textContent="Lv.1";
+      earnRate=0.04;
+      document.getElementById("g-rate").textContent=earnRate.toFixed(4);
+      document.getElementById("g-rate2").textContent=earnRate.toFixed(4);
+      updateLevelDisplay();
+      document.getElementById("g-bal").textContent=balance.toFixed(2);
+      document.getElementById("w-balance").textContent=balance.toFixed(4)+" TON";
+      addLocalTx("Start Pack purchased",-5);
+      const banner=document.getElementById("start-pack-banner");
+      if(banner) banner.style.display="none";
+      renderNFTs();
+      for(let i=0;i<20;i++) setTimeout(()=>spawnCoin(160+Math.random()*100,380),i*60);
+      toast("START PACK activated! +2 Levels, 2 NFTs, businesses unlocked!","var(--gold)");
+      api("/nft/buy","POST",{nft_type:"iron_mihai"}).catch(()=>{});
+      api("/nft/buy","POST",{nft_type:"sentinel"}).catch(()=>{});
+    },
+    function(){ toast("Purchase cancelled","var(--blue)"); }
+  );
 }
+
+
+// ── PAYMENT SYSTEM ──────────────────────────────────────────────
+// Opens Tonkeeper/TON Space directly with pre-filled transaction
+function sendTONPayment(amountTON, label, onSuccess, onCancel){
+  if(!walletAddr){
+    toast("Connect TON wallet first!","var(--red)");
+    navTo(document.querySelectorAll(".nav-btn")[4],"wallet");
+    setTimeout(()=>connectWallet(),600);
+    return;
+  }
+  const nano = Math.floor(amountTON * 1000000000);
+  // ton:// deep link - opens Tonkeeper, TON Space etc directly
+  const tonLink = "ton://transfer/"+OWNER
+    +"?amount="+nano
+    +"&text="+encodeURIComponent("StreetBoss:"+label);
+
+  // Show payment modal
+  showPayModal(amountTON, label, tonLink, onSuccess, onCancel);
+}
+
+function showPayModal(amount, label, tonLink, onSuccess, onCancel){
+  // Remove existing modal
+  const existing = document.getElementById("pay-modal");
+  if(existing) existing.remove();
+
+  const modal = document.createElement("div");
+  modal.id = "pay-modal";
+  modal.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:flex-end;justify-content:center;";
+  modal.innerHTML = `
+    <div style="background:#16161f;border-radius:24px 24px 0 0;padding:24px 20px 36px;width:100%;max-width:480px;border:1px solid rgba(255,255,255,0.08);">
+      <div style="text-align:center;margin-bottom:20px;">
+        <div style="font-size:32px;margin-bottom:8px;">💎</div>
+        <div style="font-size:18px;font-weight:800;color:#f0c040;">Confirm Payment</div>
+        <div style="font-size:13px;color:#888;margin-top:4px;">${label}</div>
+      </div>
+      <div style="background:#0a0a14;border-radius:14px;padding:16px;margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.05);">
+          <span style="font-size:13px;color:#666;">Amount</span>
+          <span style="font-size:14px;font-weight:700;color:#4ea8f0;">${amount.toFixed(2)} TON</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:0.5px solid rgba(255,255,255,0.05);">
+          <span style="font-size:13px;color:#666;">To wallet</span>
+          <span style="font-size:12px;color:#888;font-family:monospace;">UQCvimm...N7Ykw</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0;">
+          <span style="font-size:13px;color:#666;">Your wallet</span>
+          <span style="font-size:12px;color:#3dd68c;font-family:monospace;">${walletAddr.slice(0,8)}...${walletAddr.slice(-4)}</span>
+        </div>
+      </div>
+      <button id="pay-open-btn" style="width:100%;padding:15px;border-radius:14px;border:none;cursor:pointer;font-size:15px;font-weight:800;background:linear-gradient(135deg,#0044cc,#0088ff);color:#fff;margin-bottom:10px;">
+        Open Wallet App to Pay
+      </button>
+      <div style="text-align:center;font-size:12px;color:#555;margin-bottom:14px;">
+        Opens Tonkeeper / TON Space to confirm
+      </div>
+      <div id="pay-confirm-area" style="display:none;">
+        <div style="text-align:center;font-size:13px;color:#888;margin-bottom:10px;">
+          After paying in your wallet app, tap below:
+        </div>
+        <button id="pay-done-btn" style="width:100%;padding:13px;border-radius:14px;border:none;cursor:pointer;font-size:14px;font-weight:700;background:linear-gradient(135deg,#0d3012,#20d060);color:#fff;margin-bottom:8px;">
+          I paid — Activate now!
+        </button>
+      </div>
+      <button id="pay-cancel-btn" style="width:100%;padding:11px;border-radius:14px;border:none;cursor:pointer;font-size:13px;color:#555;background:transparent;">
+        Cancel
+      </button>
+    </div>`;
+
+  document.body.appendChild(modal);
+
+  // Open wallet button
+  document.getElementById("pay-open-btn").onclick = function(){
+    if(tg){
+      tg.openLink(tonLink);
+    }else{
+      window.open(tonLink, "_blank");
+    }
+    // Show confirm button after 2 seconds
+    setTimeout(()=>{
+      document.getElementById("pay-confirm-area").style.display = "block";
+      document.getElementById("pay-open-btn").textContent = "Open Wallet Again";
+      document.getElementById("pay-open-btn").style.background = "#1a1a2e";
+      document.getElementById("pay-open-btn").style.color = "#4ea8f0";
+    }, 2000);
+  };
+
+  // Confirm button
+  document.getElementById("pay-done-btn").onclick = function(){
+    modal.remove();
+    if(onSuccess) onSuccess();
+  };
+
+  // Cancel
+  document.getElementById("pay-cancel-btn").onclick = function(){
+    modal.remove();
+    if(onCancel) onCancel();
+  };
+
+  // Close on backdrop
+  modal.addEventListener("click", function(e){
+    if(e.target === modal){
+      modal.remove();
+      if(onCancel) onCancel();
+    }
+  });
+}
+// ────────────────────────────────────────────────────────────────
 
 function updateLevelDisplay(){
   // Level based on NFTs owned: 0 NFTs=Lv0, each NFT adds 1 level
@@ -1010,50 +1061,39 @@ async function gameCollect(e){
 
 function upgradeItem(el,name){
   if(!walletAddr){toast("Connect wallet first!","var(--red)");return;}
-  // Find current level of this item
-  const lvlId = {
-    "Food Truck":"lv1","Club":"lv2","Salon":"lv3",
-    "Garage":"lv4","Guard":"lv5","Turf":"lv6"
-  }[name];
-  const lvlEl = lvlId ? document.getElementById(lvlId) : null;
-  const currentLvText = lvlEl ? lvlEl.textContent : "Lv.0";
-  const currentLv = parseInt(currentLvText.replace("Lv.","")) || 0;
+  const lvlId={"Food Truck":"lv1","Club":"lv2","Salon":"lv3","Garage":"lv4","Guard":"lv5","Turf":"lv6"}[name];
+  const lvlEl=lvlId?document.getElementById(lvlId):null;
+  const currentLv=parseInt((lvlEl?lvlEl.textContent:"Lv.0").replace("Lv.",""))||0;
   if(currentLv>=10){toast(name+" is MAX level!","var(--gold)");return;}
-  const nextLv = currentLv+1;
-  const cost = nextLv * 0.5; // Lv1=0.5, Lv2=1.0, Lv3=1.5...
-  if(!confirm("Upgrade "+name+" to Lv."+nextLv+" for "+cost.toFixed(1)+" TON?")) return;
-  // Send TON payment
-  if(tonConnectUI){
-    const nanoTon = String(Math.round(cost*1e9));
-    tonConnectUI.sendTransaction({
-      validUntil:Math.floor(Date.now()/1000)+600,
-      messages:[{address:OWNER,amount:nanoTon,payload:""}]
-    }).then(()=>{
-      // Payment confirmed - update UI
+  const nextLv=currentLv+1;
+  const cost=nextLv*0.5;
+  sendTONPayment(
+    cost,
+    name+" upgrade to Lv."+nextLv,
+    function(){
+      // Payment confirmed - apply upgrade
       if(lvlEl) lvlEl.textContent="Lv."+nextLv;
-      balance=parseFloat((balance-cost).toFixed(6));
+      balance=Math.max(0,parseFloat((balance-cost).toFixed(6)));
       document.getElementById("g-bal").textContent=balance.toFixed(2);
       document.getElementById("w-balance").textContent=balance.toFixed(4)+" TON";
-      // Add XP and check level up
+      // Update earn rate
+      earnRate=parseFloat((earnRate+0.01).toFixed(4));
+      document.getElementById("g-rate").textContent=earnRate.toFixed(4);
+      document.getElementById("g-rate2").textContent=earnRate.toFixed(4);
+      // XP and level
       playerXP+=20;
       const xpN=(playerLevel+1)*100;
-      if(playerXP>=xpN&&playerLevel<10){
-        playerLevel++;
-        toast("Level UP! Now Lv."+playerLevel+"!","var(--gold)");
-      }
+      if(playerXP>=xpN&&playerLevel<10){ playerLevel++; }
       updateLevelDisplay();
       el.style.borderColor=COLORS[btype]||"var(--gold)";
       setTimeout(()=>el.style.borderColor="rgba(255,255,255,.07)",800);
-      addLocalTx(name+" upgraded to Lv."+nextLv,-cost);
+      addLocalTx(name+" Lv."+nextLv,-cost);
       spawnXP("+20 XP",el.getBoundingClientRect().left+31,el.getBoundingClientRect().top);
-      api("/business/upgrade","POST",{biz_type:lvlId?lvlId.replace("lv",""):""});
-    }).catch(e=>{
-      toast("Upgrade cancelled","var(--red)");
-    });
-  }else{
-    // Fallback without TON Connect
-    toast("Connect TON wallet first!","var(--red)");
-  }
+      api("/business/upgrade","POST",{biz_type:name.toLowerCase().replace(" ","")}).catch(()=>{});
+      toast(name+" upgraded to Lv."+nextLv+"!","var(--gold)");
+    },
+    function(){ toast("Upgrade cancelled","var(--blue)"); }
+  );
 }
 
 async function doAtk(name,loot,el){
