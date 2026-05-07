@@ -285,12 +285,12 @@ body{background:var(--dark);color:#f0f0f0;font-family:-apple-system,BlinkMacSyst
   <div class="stage" id="stage">
     <div class="stage-radial" id="stage-radial"></div>
     <div class="glow-ring" id="glow-ring"></div>
-    <div class="side-item si-tl" onclick="upgradeItem(this,'Food Truck')"><div class="si-icon">🍔</div><div class="si-name">Food</div><div class="si-lv" id="lv1">Lv.3</div></div>
-    <div class="side-item si-ml" onclick="upgradeItem(this,'Club')"><div class="si-icon">🎵</div><div class="si-name">Club</div><div class="si-lv" id="lv2">Lv.2</div></div>
-    <div class="side-item si-bl" onclick="upgradeItem(this,'Salon')"><div class="si-icon">💈</div><div class="si-name">Salon</div><div class="si-lv" id="lv3">Lv.1</div></div>
-    <div class="side-item si-tr" onclick="upgradeItem(this,'Garage')"><div class="si-icon">🔧</div><div class="si-name">Garage</div><div class="si-lv" id="lv4">Lv.1</div></div>
+    <div class="side-item si-tl" onclick="upgradeItem(this,'Food Truck')"><div class="si-icon">🍔</div><div class="si-name">Food</div><div class="si-lv" id="lv1">Lv.0</div></div>
+    <div class="side-item si-ml" onclick="upgradeItem(this,'Club')"><div class="si-icon">🎵</div><div class="si-name">Club</div><div class="si-lv" id="lv2">Lv.0</div></div>
+    <div class="side-item si-bl" onclick="upgradeItem(this,'Salon')"><div class="si-icon">💈</div><div class="si-name">Salon</div><div class="si-lv" id="lv3">Lv.0</div></div>
+    <div class="side-item si-tr" onclick="upgradeItem(this,'Garage')"><div class="si-icon">🔧</div><div class="si-name">Garage</div><div class="si-lv" id="lv4">Lv.0</div></div>
     <div class="side-item si-mr" onclick="upgradeItem(this,'Guard')"><div class="si-icon">🛡️</div><div class="si-name">Guard</div><div class="si-lv" id="lv5" style="color:var(--purple);">NFT</div></div>
-    <div class="side-item si-br" onclick="upgradeItem(this,'Turf')"><div class="si-icon">📍</div><div class="si-name">Turf</div><div class="si-lv" id="lv6">Lv.2</div></div>
+    <div class="side-item si-br" onclick="upgradeItem(this,'Turf')"><div class="si-icon">📍</div><div class="si-name">Turf</div><div class="si-lv" id="lv6">Lv.0</div></div>
     <img class="hero-img" id="hero-img" src="" alt="Boss"/>
     <div class="hero-overlay"><div class="h-name" id="g-hname">-</div><div class="h-rank" id="g-hrank">Block Captain · Rank #47</div></div>
     <div class="stage-ground"></div>
@@ -300,7 +300,7 @@ body{background:var(--dark);color:#f0f0f0;font-family:-apple-system,BlinkMacSyst
     <div class="xp-track"><div class="xp-fill" id="xp-fill" style="width:0%;"></div></div>
   </div>
   <div class="stats-row">
-    <div class="s-card" data-icon="💰"><div class="s-val" id="g-accum" style="color:var(--green);">0.3200 TON</div><div class="s-lab">Accumulated</div><div class="s-sub" style="color:var(--green);">+<span id="g-rate">0.0800</span>/hr</div></div>
+    <div class="s-card" data-icon="💰"><div class="s-val" id="g-accum" style="color:var(--green);">0.0000 TON</div><div class="s-lab">Accumulated</div><div class="s-sub" style="color:var(--green);">+<span id="g-rate">0.0000</span>/hr</div></div>
     <div class="s-card" data-icon="⚔️"><div class="s-val" style="color:var(--red);">340</div><div class="s-lab">Street Power</div><div class="s-sub" style="color:#444;">Defense + Attack</div></div>
   </div>
   <div class="coll-zone">
@@ -485,7 +485,7 @@ const NFTS=[
 ];
 
 // -- State --
-let btype=null,balance=0,accrued=0,earnRate=0.08,cd=3492,cdInt,playerLevel=0,playerXP=0;
+let btype=null,balance=0,accrued=0,earnRate=0,cd=3600,cdInt,playerLevel=0,playerXP=0,bizLevels={"lv1":0,"lv2":0,"lv3":0,"lv4":0,"lv5":0,"lv6":0};
 let ownedNFTs=[],transactions=[],friendsList=[],refCount=0,walletAddr=null;
 
 // -- Particles --
@@ -551,7 +551,7 @@ function selectBoss(type){
   buildGame(type);
   switchScreen("game");
   startCD();
-  // API call in background - doesn't block UI
+  // API call in background - does not block UI
   api("/player/boss","POST",{boss_type:type}).catch(()=>{});
   setTimeout(()=>loadPlayer(),1000);
 }
@@ -574,9 +574,9 @@ function buildGame(type){
   document.getElementById("g-rate2").textContent=earnRate.toFixed(4);
   updateLevelDisplay();
   const targets=[
-    {n:"BigMike_TON",loot:.80,str:"Weak",sc:COLORS.hood,it:"hood"},
-    {n:"QueenStreet",loot:1.20,str:"Medium",sc:COLORS.tatted,it:"tatted"},
-    {n:"TheCryptoKing",loot:2.10,str:"Dangerous",sc:COLORS.don,it:"don"}
+    {n:"BigMike_TON",loot:0.001,str:"Weak",sc:COLORS.hood,it:"hood"},
+    {n:"QueenStreet",loot:0.010,str:"Medium",sc:COLORS.tatted,it:"tatted"},
+    {n:"TheCryptoKing",loot:0.100,str:"Dangerous",sc:COLORS.don,it:"don"}
   ];
   document.getElementById("g-targets").innerHTML=targets.map(t=>`
     <div class="target-card" onclick="doAtk('${t.n}',${t.loot},this)">
@@ -621,31 +621,47 @@ function renderNFTs(){
 }
 
 async function buyNFT(type,name,price){
-  // Check wallet connected first
   if(!walletAddr){
-    toast("Connect your TON wallet first!","var(--red)");
+    toast("Connect TON wallet first!","var(--red)");
     navTo(document.querySelectorAll(".nav-btn")[4],"wallet");
-    setTimeout(()=>connectWallet(),500);
+    setTimeout(()=>connectWallet(),600);
     return;
   }
-  if(balance<price){toast("Insufficient TON balance!","var(--red)");return;}
-  if(!confirm("Buy "+name+" for "+price+" TON? Payment goes to: "+OWNER.slice(0,12)+"...")) return;
-  const res=await api("/nft/buy","POST",{nft_type:type});
-  if(res&&res.success){
-    balance=parseFloat((balance-price).toFixed(6));
-    ownedNFTs.push(type);
-    // Level up! Each NFT = +1 level
-    playerLevel++;
-    playerXP+=50;
-    updateLevelDisplay();
-    document.getElementById("g-bal").textContent=balance.toFixed(2);
-    document.getElementById("w-balance").textContent=balance.toFixed(4)+" TON";
-    renderNFTs();
-    addLocalTx("NFT "+name+" purchased",-price);
-    spawnXP("+50 XP",190,300);
-    toast(name+" recruited! Level up! Power increased!","var(--green)");
-  }else{
-    toast((res&&res.detail)||"Purchase failed - try again","var(--red)");
+  if(ownedNFTs.includes(type)){toast("Already owned!","var(--blue)");return;}
+  // Send real TON payment via TON Connect
+  try{
+    toast("Opening wallet to confirm payment...","var(--blue)");
+    if(tonConnectUI){
+      const nanoTon = String(Math.round(price * 1e9));
+      const tx = {
+        validUntil: Math.floor(Date.now()/1000)+600,
+        messages:[{
+          address: OWNER,
+          amount: nanoTon,
+          payload: ""
+        }]
+      };
+      await tonConnectUI.sendTransaction(tx);
+      // Payment sent - confirm on backend
+      const res = await api("/nft/buy","POST",{nft_type:type});
+      ownedNFTs.push(type);
+      playerLevel++;
+      playerXP+=50;
+      updateLevelDisplay();
+      document.getElementById("g-bal").textContent=(balance-price).toFixed(2);
+      balance=parseFloat((balance-price).toFixed(6));
+      document.getElementById("w-balance").textContent=balance.toFixed(4)+" TON";
+      renderNFTs();
+      addLocalTx("NFT "+name+" purchased",-price);
+      spawnXP("+50 XP",190,300);
+      toast(name+" recruited! Level UP! ","var(--green)");
+    }
+  }catch(e){
+    if(e.message&&e.message.includes("cancel")){
+      toast("Transaction cancelled","var(--red)");
+    }else{
+      toast("Payment failed: "+e.message,"var(--red)");
+    }
   }
 }
 
@@ -763,6 +779,56 @@ function navTo(btn,name){
 }
 
 // -- Game actions --
+async function buyStartPack(){
+  if(!walletAddr){
+    toast("Connect TON wallet first!","var(--red)");
+    navTo(document.querySelectorAll(".nav-btn")[4],"wallet");
+    setTimeout(()=>connectWallet(),600);
+    return;
+  }
+  if(ownedNFTs.includes("start_pack_bought")){
+    toast("Start Pack already purchased!","var(--blue)");
+    return;
+  }
+  try{
+    toast("Opening wallet for 5 TON payment...","var(--blue)");
+    const nanoTon=String(5*1000000000);
+    await tonConnectUI.sendTransaction({
+      validUntil:Math.floor(Date.now()/1000)+600,
+      messages:[{address:OWNER,amount:nanoTon,payload:""}]
+    });
+    // Payment confirmed!
+    ownedNFTs.push("iron_mihai","sentinel","start_pack_bought");
+    balance=parseFloat((balance-5).toFixed(6));
+    playerLevel+=2;
+    playerXP+=200;
+    // Upgrade food to lv2, club to lv1
+    document.getElementById("lv1").textContent="Lv.2";
+    document.getElementById("lv2").textContent="Lv.1";
+    earnRate=0.04; // Food Lv2 + Club Lv1
+    document.getElementById("g-rate").textContent=earnRate.toFixed(4);
+    document.getElementById("g-rate2").textContent=earnRate.toFixed(4);
+    updateLevelDisplay();
+    document.getElementById("g-bal").textContent=balance.toFixed(2);
+    document.getElementById("w-balance").textContent=balance.toFixed(4)+" TON";
+    addLocalTx("Start Pack purchased",-5);
+    // Hide start pack banner
+    const banner=document.getElementById("start-pack-banner");
+    if(banner) banner.style.display="none";
+    renderNFTs();
+    // Coins explosion
+    for(let i=0;i<20;i++){
+      setTimeout(()=>spawnCoin(190+Math.random()*100-50,400+Math.random()*100-50),i*60);
+    }
+    toast("START PACK activated! +2 Levels, 2 NFTs, businesses unlocked!","var(--gold)");
+    // Tell backend
+    await api("/nft/buy","POST",{nft_type:"iron_mihai"});
+    await api("/nft/buy","POST",{nft_type:"sentinel"});
+  }catch(e){
+    toast("Purchase cancelled","var(--red)");
+  }
+}
+
 function updateLevelDisplay(){
   // Level based on NFTs owned: 0 NFTs=Lv0, each NFT adds 1 level
   const lvl = playerLevel;
@@ -820,14 +886,50 @@ async function gameCollect(e){
 
 function upgradeItem(el,name){
   if(!walletAddr){toast("Connect wallet first!","var(--red)");return;}
-  el.style.borderColor=COLORS[btype]||"var(--gold)";
-  setTimeout(()=>el.style.borderColor="rgba(255,255,255,.07)",700);
-  playerXP+=10;
-  const xpN=(playerLevel+1)*100;
-  if(playerXP>=xpN&&playerLevel<10){playerLevel++;toast("Level UP! Lv."+playerLevel+"!","var(--gold)");}
-  updateLevelDisplay();
-  spawnXP("+10 XP",el.getBoundingClientRect().left+31,el.getBoundingClientRect().top);
-  toast(name+" upgraded!","var(--gold)");
+  // Find current level of this item
+  const lvlId = {
+    "Food Truck":"lv1","Club":"lv2","Salon":"lv3",
+    "Garage":"lv4","Guard":"lv5","Turf":"lv6"
+  }[name];
+  const lvlEl = lvlId ? document.getElementById(lvlId) : null;
+  const currentLvText = lvlEl ? lvlEl.textContent : "Lv.0";
+  const currentLv = parseInt(currentLvText.replace("Lv.","")) || 0;
+  if(currentLv>=10){toast(name+" is MAX level!","var(--gold)");return;}
+  const nextLv = currentLv+1;
+  const cost = nextLv * 0.5; // Lv1=0.5, Lv2=1.0, Lv3=1.5...
+  if(!confirm("Upgrade "+name+" to Lv."+nextLv+" for "+cost.toFixed(1)+" TON?")) return;
+  // Send TON payment
+  if(tonConnectUI){
+    const nanoTon = String(Math.round(cost*1e9));
+    tonConnectUI.sendTransaction({
+      validUntil:Math.floor(Date.now()/1000)+600,
+      messages:[{address:OWNER,amount:nanoTon,payload:""}]
+    }).then(()=>{
+      // Payment confirmed - update UI
+      if(lvlEl) lvlEl.textContent="Lv."+nextLv;
+      balance=parseFloat((balance-cost).toFixed(6));
+      document.getElementById("g-bal").textContent=balance.toFixed(2);
+      document.getElementById("w-balance").textContent=balance.toFixed(4)+" TON";
+      // Add XP and check level up
+      playerXP+=20;
+      const xpN=(playerLevel+1)*100;
+      if(playerXP>=xpN&&playerLevel<10){
+        playerLevel++;
+        toast("Level UP! Now Lv."+playerLevel+"!","var(--gold)");
+      }
+      updateLevelDisplay();
+      el.style.borderColor=COLORS[btype]||"var(--gold)";
+      setTimeout(()=>el.style.borderColor="rgba(255,255,255,.07)",800);
+      addLocalTx(name+" upgraded to Lv."+nextLv,-cost);
+      spawnXP("+20 XP",el.getBoundingClientRect().left+31,el.getBoundingClientRect().top);
+      api("/business/upgrade","POST",{biz_type:lvlId?lvlId.replace("lv",""):""});
+    }).catch(e=>{
+      toast("Upgrade cancelled","var(--red)");
+    });
+  }else{
+    // Fallback without TON Connect
+    toast("Connect TON wallet first!","var(--red)");
+  }
 }
 
 async function doAtk(name,loot,el){
