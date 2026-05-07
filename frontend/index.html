@@ -504,12 +504,20 @@ async function loadPlayer(){
 function selectBoss(type){
   btype=type;
   const card=document.querySelector(".boss-card."+type);
+  if(!card) return;
   card.style.animation="shake .4s ease";
   setTimeout(()=>card.style.animation="",400);
-  const r=card.getBoundingClientRect();
-  for(let i=0;i<14;i++) spawnSpark(r.left+r.width*.4,r.top+r.height/2,COLORS[type]);
-  api("/player/boss","POST",{boss_type:type});
-  setTimeout(()=>{buildGame(type);switchScreen("game");startCD();loadPlayer();},420);
+  try{
+    const r=card.getBoundingClientRect();
+    for(let i=0;i<14;i++) spawnSpark(r.left+r.width*.4,r.top+r.height/2,COLORS[type]);
+  }catch(e){}
+  // Build game immediately - no API dependency
+  buildGame(type);
+  switchScreen("game");
+  startCD();
+  // API call in background - doesn't block UI
+  api("/player/boss","POST",{boss_type:type}).catch(()=>{});
+  setTimeout(()=>loadPlayer(),1000);
 }
 
 function buildGame(type){
@@ -717,8 +725,11 @@ function startCD(){
 
 async function gameCollect(e){
   if(accrued<=0){toast("Nothing to collect yet!","var(--red)");return;}
-  const res=await api("/collect","POST");
-  const col=res.collected||accrued;
+  let col=accrued;
+  try{
+    const res=await api("/collect","POST");
+    if(res&&res.collected) col=res.collected;
+  }catch(e){}
   balance=parseFloat((balance+col).toFixed(6));
   accrued=0;
   document.getElementById("g-accum").textContent="0.0000 TON";
@@ -743,10 +754,14 @@ function upgradeItem(el,name){
 async function doAtk(name,loot,el){
   el.style.animation="shake .3s ease";
   setTimeout(()=>el.style.animation="",300);
-  const res=await api("/pvp/attack","POST",{target_id:Math.floor(Math.random()*999)+1});
-  const wins=res.success!==undefined?res.success:Math.random()>0.35;
+  let wins=Math.random()>0.35;
+  let apiLoot=null;
+  try{
+    const res=await api("/pvp/attack","POST",{target_id:Math.floor(Math.random()*999)+1});
+    if(res&&res.success!==undefined){wins=res.success;apiLoot=res.loot;}
+  }catch(e){}
   if(wins){
-    const net=res.loot||parseFloat((loot*.95).toFixed(4));
+    const net=apiLoot||parseFloat((loot*.95).toFixed(4));
     balance=parseFloat((balance+net).toFixed(6));
     document.getElementById("g-bal").textContent=balance.toFixed(2);
     document.getElementById("w-balance").textContent=balance.toFixed(4)+" TON";
