@@ -174,6 +174,8 @@ body{background:var(--dark);color:#f0f0f0;font-family:-apple-system,BlinkMacSyst
 .xp-fl{position:fixed;pointer-events:none;font-size:14px;font-weight:800;z-index:9999;animation:xp-pop .9s ease forwards;}
 .coin{position:fixed;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#000;background:var(--gold);pointer-events:none;z-index:9999;animation:coin-fly .7s ease forwards;}
 </style>
+<!-- Telegram Mini Apps Analytics SDK -->
+<script src="https://tganalytics.xyz/index.js" defer></script>
 </head>
 <body>
 <div class="app">
@@ -381,6 +383,30 @@ body{background:var(--dark);color:#f0f0f0;font-family:-apple-system,BlinkMacSyst
 <script>
 const tg=(typeof Telegram!=="undefined"&&Telegram.WebApp)?Telegram.WebApp:null;
 if(tg){tg.ready();tg.expand();}
+
+// Telegram Mini Apps Analytics
+const ANALYTICS_KEY="eyJhcHBfbmFtZSI6InN0cmVldGJvc3MiLCJhcHBfdXJsIjoiaHR0cHM6Ly90Lm1lL1N0cmVldEZpbmFsQm9zc0JvdCIsImFwcF9kb21haW4iOiJodHRwczovL3N0cmVldGJvc3MtcHJvZHVjdGlvbi51cC5yYWlsd2F5LmFwcCJ9!l/9uohu6JftVXQdJfTeZ6bcrCa4zlqxuiXi8FD4CtcU=";
+function initAnalytics(){
+  try{
+    if(window.telegramAnalytics){
+      window.telegramAnalytics.init({
+        token: ANALYTICS_KEY,
+        appName: "streetboss"
+      });
+      // Track key events
+      window.telegramAnalytics.track("app_launch");
+    }
+  }catch(e){ console.log("Analytics init:", e); }
+}
+setTimeout(initAnalytics, 1000);
+
+function trackEvent(name, params){
+  try{
+    if(window.telegramAnalytics){
+      window.telegramAnalytics.track(name, params||{});
+    }
+  }catch(e){}
+}
 const UID=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user.id:0;
 const UNAME=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user.username||"player":"player";
 const API="https://streetboss-production.up.railway.app/api";
@@ -537,6 +563,7 @@ function _activateBoss(type){
   switchScreen("game");
   startCD();
   api("/player/boss","POST",{boss_type:type}).catch(()=>{});
+  trackEvent("boss_selected",{boss:type});
   setTimeout(loadPlayer,1000);
 }
 
@@ -590,6 +617,7 @@ async function gameCollect(e){
   playerXP+=10;updateLevelDisplay();
   addLocalTx("Passive income collected",col,true);
   toast("+"+col.toFixed(4)+" TON collected!","var(--green)");
+  trackEvent("earnings_collected",{amount:col});
 }
 
 // Upgrade businesses
@@ -738,6 +766,7 @@ function buyNFT(type,name,price){
     spawnXP("+50 XP",200,300);
     toast(name+" recruited! Lv."+playerLevel+"!","var(--green)");
     api("/nft/buy","POST",{nft_type:type}).catch(()=>{});
+    trackEvent("nft_purchased",{type:type,price:price});
   },function(){toast("Purchase cancelled","var(--blue)");});
 }
 
