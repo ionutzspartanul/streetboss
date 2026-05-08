@@ -393,19 +393,15 @@ function initAnalytics(){
         token: ANALYTICS_KEY,
         appName: "streetboss"
       });
-      // Track key events
-      window.telegramAnalytics.track("app_launch");
+      console.log("Analytics initialized!");
     }
   }catch(e){ console.log("Analytics init:", e); }
 }
 setTimeout(initAnalytics, 1000);
 
 function trackEvent(name, params){
-  try{
-    if(window.telegramAnalytics){
-      window.telegramAnalytics.track(name, params||{});
-    }
-  }catch(e){}
+  // Analytics tracking - events tracked automatically by SDK
+  console.log("Event:", name, params||{});
 }
 const UID=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user.id:0;
 const UNAME=tg&&tg.initDataUnsafe&&tg.initDataUnsafe.user?tg.initDataUnsafe.user.username||"player":"player";
