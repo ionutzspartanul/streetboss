@@ -436,6 +436,34 @@ const NFTS=[
 
 // State
 let btype=null,balance=0,accrued=0,earnRate=0,cd=3600,cdInt;
+let attacksToday=0,lastAttackDate="";
+const ATTACK_LIMITS={hood:3,tatted:5,don:8};
+
+function getAttacksLeft(){
+  const today=new Date().toDateString();
+  if(lastAttackDate!==today){
+    attacksToday=0;
+    lastAttackDate=today;
+    localStorage.setItem("sb_attacks","0|"+today);
+  }
+  const limit=ATTACK_LIMITS[btype]||3;
+  return Math.max(0,limit-attacksToday);
+}
+
+function loadAttacks(){
+  const saved=localStorage.getItem("sb_attacks");
+  if(saved){
+    const [count,date]=saved.split("|");
+    const today=new Date().toDateString();
+    if(date===today){
+      attacksToday=parseInt(count)||0;
+      lastAttackDate=date;
+    }else{
+      attacksToday=0;
+      lastAttackDate=today;
+    }
+  }
+}
 let playerLevel=0,playerXP=0,ownedNFTs=[],transactions=[],walletAddr=null;
 let unlockedBosses=["hood"];
 const bizLevels={food:0,club:0,salon:0,garage:0,guard:0,turf:0};
@@ -560,6 +588,7 @@ function _activateBoss(type){
     doAtk(card.getAttribute("data-name"),parseFloat(card.getAttribute("data-loot")),card);
   };
   updateLevelDisplay();
+  updateAttackCounter();
   switchScreen("game");
   startCD();
   api("/player/boss","POST",{boss_type:type}).catch(()=>{});
@@ -568,6 +597,21 @@ function _activateBoss(type){
 }
 
 // Level display
+function updateAttackCounter(){
+  const left=getAttacksLeft();
+  const limit=ATTACK_LIMITS[btype]||3;
+  const pvpSec=document.querySelector(".pvp-sec .sec-hd");
+  if(pvpSec){
+    pvpSec.textContent="Raid Targets - "+left+"/"+limit+" attacks left today";
+    pvpSec.style.color=left>0?"#333":"var(--red)";
+  }
+  // Grey out targets if no attacks left
+  document.querySelectorAll(".target-card").forEach(card=>{
+    card.style.opacity=left>0?"1":"0.4";
+    card.style.pointerEvents=left>0?"auto":"none";
+  });
+}
+
 function updateLevelDisplay(){
   const lvl=playerLevel;
   const xpN=(lvl+1)*100;
@@ -657,8 +701,24 @@ function upgradeItem(key,name){
 
 // PvP
 async function doAtk(name,loot,el){
+  // Check daily attack limit
+  const left=getAttacksLeft();
+  const limit=ATTACK_LIMITS[btype]||3;
+  if(left<=0){
+    toast("No attacks left today! Resets at midnight. ("+limit+"/day for your boss)","var(--red)");
+    return;
+  }
+  
   el.style.animation="shake .3s ease";
   setTimeout(()=>el.style.animation="",300);
+  
+  // Use attack
+  attacksToday++;
+  localStorage.setItem("sb_attacks",attacksToday+"|"+new Date().toDateString());
+  
+  // Update targets display
+  updateAttackCounter();
+  
   const wins=Math.random()>0.40;
   if(wins){
     balance=parseFloat((balance+loot*0.95).toFixed(6));
@@ -669,10 +729,12 @@ async function doAtk(name,loot,el){
     spawnXP("+20 XP",r.left+r.width/2,r.top-10);
     playerXP+=20;updateLevelDisplay();
     addLocalTx("Raid win vs @"+name,loot*0.95,true);
-    toast("Victory! +"+(loot*0.95).toFixed(4)+" TON looted!","var(--green)");
+    toast("Victory! +"+(loot*0.95).toFixed(4)+" TON looted! ("+getAttacksLeft()+" attacks left today)","var(--green)");
     api("/pvp/attack","POST",{target_id:1}).catch(()=>{});
+    trackEvent("pvp_attack_win",{boss:btype,loot:loot});
   }else{
-    toast("Attack repelled! Guards too strong.","var(--red)");
+    toast("Attack repelled! Guards too strong. ("+getAttacksLeft()+" attacks left today)","var(--red)");
+    trackEvent("pvp_attack_fail",{boss:btype});
   }
 }
 
@@ -1089,7 +1151,7 @@ function spawnSpark(x,y,color){
   }
 }
 
-window.addEventListener("DOMContentLoaded",loadPlayer);
+window.addEventListener("DOMContentLoaded",function(){loadAttacks();loadPlayer();});
 </script>
 </body>
 </html>
