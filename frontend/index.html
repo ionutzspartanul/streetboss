@@ -184,7 +184,7 @@ body{background:var(--dark);color:#f0f0f0;font-family:-apple-system,BlinkMacSyst
 .coin{position:fixed;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#000;background:var(--gold);pointer-events:none;z-index:9999;animation:coin-fly .7s ease forwards;}
 </style>
 <!-- Telegram Mini Apps Analytics SDK -->
-<script src="https://tganalytics.xyz/index.js"></script>
+<script async src="https://tganalytics.xyz/index.js" onload="initAnalytics()" type="text/javascript"></script>
 </head>
 <body>
 <div class="app">
@@ -435,28 +435,17 @@ const tg=(typeof Telegram!=="undefined"&&Telegram.WebApp)?Telegram.WebApp:null;
 if(tg){tg.ready();tg.expand();}
 
 // Telegram Mini Apps Analytics
-const ANALYTICS_KEY="eyJhcHBfbmFtZSI6InN0cmVldGJvc3MiLCJhcHBfdXJsIjoiaHR0cHM6Ly90Lm1lL1N0cmVldEZpbmFsQm9zc0JvdCIsImFwcF9kb21haW4iOiJodHRwczovL3N0cmVldGJvc3MtcHJvZHVjdGlvbi51cC5yYWlsd2F5LmFwcCJ9!l/9uohu6JftVXQdJfTeZ6bcrCa4zlqxuiXi8FD4CtcU=";
 function initAnalytics(){
   try{
-    if(window.telegramAnalytics && window.telegramAnalytics.init){
-      window.telegramAnalytics.init({
-        token: ANALYTICS_KEY,
-        appName: "streetboss"
-      });
-      console.log("Analytics OK!");
-    }else{
-      // Retry after 500ms if SDK not loaded yet
-      setTimeout(initAnalytics, 500);
-    }
-  }catch(e){ 
+    window.telegramAnalytics.init({
+      token: "eyJhcHBfbmFtZSI6InN0cmVldGJvc3MiLCJhcHBfdXJsIjoiaHR0cHM6Ly90Lm1lL1N0cmVldEZpbmFsQm9zc0JvdCIsImFwcF9kb21haW4iOiJodHRwczovL3N0cmVldGJvc3MtcHJvZHVjdGlvbi51cC5yYWlsd2F5LmFwcCJ9!l/9uohu6JftVXQdJfTeZ6bcrCa4zlqxuiXi8FD4CtcU=",
+      appName: "streetboss"
+    });
+    console.log("Telegram Analytics initialized!");
+  }catch(e){
     console.log("Analytics error:", e);
-    setTimeout(initAnalytics, 1000);
   }
 }
-// Try immediately and after delays
-initAnalytics();
-setTimeout(initAnalytics, 500);
-setTimeout(initAnalytics, 2000);
 
 function trackEvent(name, params){
   // Analytics tracking - events tracked automatically by SDK
