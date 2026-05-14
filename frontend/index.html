@@ -7,13 +7,11 @@
 <!-- Telegram Mini Apps Analytics SDK -->
 <script async src="https://tganalytics.xyz/index.js" onload="initAnalytics()" type="text/javascript"></script>
 <script>
-function initAnalytics(){
-  try{
-    window.telegramAnalytics.init({
-      token: "eyJhcHBfbmFtZSI6InN0cmVldGJvc3NnYW1lIiwiYXBwX3VybCI6Imh0dHBzOi8vdC5tZS9TdHJlZXRGaW5hbEJvc3NCb3QiLCJhcHBfZG9tYWluIjoiaHR0cHM6Ly9zdHJlZXRib3NzLXByb2R1Y3Rpb24udXAucmFpbHdheS5hcHAifQ==!xvsRTvqN6ejmMHDl7Nt2ImQzijpXOLaCZDTJ1oP/FPY=",
-      appName: "streetbossgame"
-    });
-  }catch(e){ console.log("Analytics:",e); }
+function initAnalytics() {
+  window.telegramAnalytics.init({
+    token: "eyJhcHBfbmFtZSI6InN0cmVldGJvc3NnYW1lIiwiYXBwX3VybCI6Imh0dHBzOi8vdC5tZS9TdHJlZXRGaW5hbEJvc3NCb3QiLCJhcHBfZG9tYWluIjoiaHR0cHM6Ly9zdHJlZXRib3NzLXByb2R1Y3Rpb24udXAucmFpbHdheS5hcHAifQ==!xvsRTvqN6ejmMHDl7Nt2ImQzijpXOLaCZDTJ1oP/FPY=",
+    appName: "streetbossgame"
+  });
 }
 </script>
 <style>
