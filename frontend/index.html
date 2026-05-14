@@ -185,6 +185,7 @@ body{background:var(--dark);color:#f0f0f0;font-family:-apple-system,BlinkMacSyst
 </style>
 <!-- Telegram Mini Apps Analytics SDK -->
 <script async src="https://tganalytics.xyz/index.js" onload="initAnalytics()" type="text/javascript"></script>
+<script async src="https://unpkg.com/@telegram-apps/analytics@latest/dist/index.js" onload="initAnalytics()" type="text/javascript"></script>
 </head>
 <body>
 <div class="app">
@@ -435,17 +436,28 @@ const tg=(typeof Telegram!=="undefined"&&Telegram.WebApp)?Telegram.WebApp:null;
 if(tg){tg.ready();tg.expand();}
 
 // Telegram Mini Apps Analytics
+let _analyticsInited = false;
 function initAnalytics(){
+  if(_analyticsInited) return;
   try{
-    window.telegramAnalytics.init({
-      token: "eyJhcHBfbmFtZSI6InN0cmVldGJvc3MiLCJhcHBfdXJsIjoiaHR0cHM6Ly90Lm1lL1N0cmVldEZpbmFsQm9zc0JvdCIsImFwcF9kb21haW4iOiJodHRwczovL3N0cmVldGJvc3MtcHJvZHVjdGlvbi51cC5yYWlsd2F5LmFwcCJ9!l/9uohu6JftVXQdJfTeZ6bcrCa4zlqxuiXi8FD4CtcU=",
-      appName: "streetboss"
-    });
-    console.log("Telegram Analytics initialized!");
+    if(window.telegramAnalytics && window.telegramAnalytics.init){
+      window.telegramAnalytics.init({
+        token: "eyJhcHBfbmFtZSI6InN0cmVldGJvc3MiLCJhcHBfdXJsIjoiaHR0cHM6Ly90Lm1lL1N0cmVldEZpbmFsQm9zc0JvdCIsImFwcF9kb21haW4iOiJodHRwczovL3N0cmVldGJvc3MtcHJvZHVjdGlvbi51cC5yYWlsd2F5LmFwcCJ9!l/9uohu6JftVXQdJfTeZ6bcrCa4zlqxuiXi8FD4CtcU=",
+        appName: "streetboss"
+      });
+      _analyticsInited = true;
+      console.log("Telegram Analytics initialized successfully!");
+    }
   }catch(e){
-    console.log("Analytics error:", e);
+    console.log("Analytics init error:", e);
   }
 }
+// Also try on DOMContentLoaded and window load
+document.addEventListener("DOMContentLoaded", function(){
+  setTimeout(initAnalytics, 500);
+  setTimeout(initAnalytics, 2000);
+  setTimeout(initAnalytics, 5000);
+});
 
 function trackEvent(name, params){
   // Analytics tracking - events tracked automatically by SDK
