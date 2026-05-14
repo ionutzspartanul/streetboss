@@ -4,6 +4,18 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
 <title>StreetBoss</title>
+<!-- Telegram Mini Apps Analytics SDK -->
+<script async src="https://tganalytics.xyz/index.js" onload="initAnalytics()" type="text/javascript"></script>
+<script>
+function initAnalytics(){
+  try{
+    window.telegramAnalytics.init({
+      token: "eyJhcHBfbmFtZSI6InN0cmVldGJvc3NnYW1lIiwiYXBwX3VybCI6Imh0dHBzOi8vdC5tZS9TdHJlZXRGaW5hbEJvc3NCb3QiLCJhcHBfZG9tYWluIjoiaHR0cHM6Ly9zdHJlZXRib3NzLXByb2R1Y3Rpb24udXAucmFpbHdheS5hcHAifQ==!xvsRTvqN6ejmMHDl7Nt2ImQzijpXOLaCZDTJ1oP/FPY=",
+      appName: "streetbossgame"
+    });
+  }catch(e){ console.log("Analytics:",e); }
+}
+</script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{--gold:#f0c040;--red:#e83030;--purple:#9b30e8;--green:#20d060;--blue:#4ea8f0;--dark:#050508;--surface:#0f0f18;--card:#16161f;}
@@ -183,9 +195,6 @@ body{background:var(--dark);color:#f0f0f0;font-family:-apple-system,BlinkMacSyst
 .xp-fl{position:fixed;pointer-events:none;font-size:14px;font-weight:800;z-index:9999;animation:xp-pop .9s ease forwards;}
 .coin{position:fixed;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;color:#000;background:var(--gold);pointer-events:none;z-index:9999;animation:coin-fly .7s ease forwards;}
 </style>
-<!-- Telegram Mini Apps Analytics SDK -->
-<script async src="https://tganalytics.xyz/index.js" onload="initAnalytics()" type="text/javascript"></script>
-<script async src="https://unpkg.com/@telegram-apps/analytics@latest/dist/index.js" onload="initAnalytics()" type="text/javascript"></script>
 </head>
 <body>
 <div class="app">
@@ -436,28 +445,7 @@ const tg=(typeof Telegram!=="undefined"&&Telegram.WebApp)?Telegram.WebApp:null;
 if(tg){tg.ready();tg.expand();}
 
 // Telegram Mini Apps Analytics
-let _analyticsInited = false;
-function initAnalytics(){
-  if(_analyticsInited) return;
-  try{
-    if(window.telegramAnalytics && window.telegramAnalytics.init){
-      window.telegramAnalytics.init({
-        token: "eyJhcHBfbmFtZSI6InN0cmVldGJvc3NnYW1lIiwiYXBwX3VybCI6Imh0dHBzOi8vdC5tZS9TdHJlZXRGaW5hbEJvc3NCb3QiLCJhcHBfZG9tYWluIjoiaHR0cHM6Ly9zdHJlZXRib3NzLXByb2R1Y3Rpb24udXAucmFpbHdheS5hcHAifQ==!xvsRTvqN6ejmMHDl7Nt2ImQzijpXOLaCZDTJ1oP/FPY=",
-        appName: "streetbossgame"
-      });
-      _analyticsInited = true;
-      console.log("Telegram Analytics initialized successfully!");
-    }
-  }catch(e){
-    console.log("Analytics init error:", e);
-  }
-}
-// Also try on DOMContentLoaded and window load
-document.addEventListener("DOMContentLoaded", function(){
-  setTimeout(initAnalytics, 500);
-  setTimeout(initAnalytics, 2000);
-  setTimeout(initAnalytics, 5000);
-});
+// Analytics initialized in <head>
 
 function trackEvent(name, params){
   // Analytics tracking - events tracked automatically by SDK
